@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { AxiosError } from 'axios';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -14,15 +13,12 @@ import {
   LayoutDashboard,
   Loader2,
   Lock,
-  Settings2,
   User,
   UtensilsCrossed,
   Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { landingPath } from '@/lib/landing';
-import { getApiUrl, setApiUrl } from '@/lib/config';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/label';
@@ -46,14 +42,19 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showServer, setShowServer] = useState(false);
-  const [serverUrl, setServerUrl] = useState(getApiUrl());
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { rememberMe: true } });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      identifier: 'admin@restaurant.local',
+      password: 'admin123',
+      rememberMe: true,
+    },
+  });
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
@@ -61,12 +62,7 @@ export function LoginPage() {
       await login(values.identifier, values.password);
       navigate(landingPath(useAuthStore.getState().user), { replace: true });
     } catch (err) {
-      const msg =
-        err instanceof AxiosError
-          ? ((err.response?.data as { message?: string })?.message ?? 'Login failed')
-          : err instanceof Error
-            ? err.message
-          : 'Login failed';
+      const msg = err instanceof Error ? err.message : 'Login failed';
       setServerError(Array.isArray(msg) ? msg.join(', ') : msg);
     }
   };
@@ -232,36 +228,6 @@ export function LoginPage() {
             Default: admin@restaurant.local / admin123
           </p>
 
-          <div className="mt-6 border-t pt-4 text-center">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setShowServer((v) => !v)}
-            >
-              <Settings2 className="h-3.5 w-3.5" /> Server settings
-            </button>
-            {showServer && (
-              <div className={cn('mt-3 space-y-2 rounded-lg border bg-muted/40 p-3 text-left')}>
-                <Label className="text-xs">Backend API URL</Label>
-                <Input
-                  value={serverUrl}
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder="https://your-backend-domain.com/api"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => {
-                    setApiUrl(serverUrl);
-                    window.location.reload();
-                  }}
-                >
-                  Save &amp; reload
-                </Button>
-              </div>
-            )}
-          </div>
         </motion.div>
       </div>
     </div>
