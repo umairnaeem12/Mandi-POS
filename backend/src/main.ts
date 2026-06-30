@@ -28,12 +28,12 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.enableCors({
-    origin: config.get<string>('FRONTEND_URL'),
+    origin: (config.get<string>('FRONTEND_URL') ?? '').split(',').map((o) => o.trim()),
     credentials: true,
   });
 
   const port = config.get<number>('APP_PORT') ?? 4000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   Logger.log(`Backend running on http://localhost:${port}/api`, 'Bootstrap');
 }
 
