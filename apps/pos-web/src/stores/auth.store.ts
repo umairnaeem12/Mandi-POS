@@ -7,6 +7,24 @@ type Status = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
 const DEMO_SESSION_KEY = 'demoAuthUser';
 const DEMO_IDENTIFIER = 'admin@restaurant.local';
+const DEMO_PERMISSIONS = [
+  'view_dashboard',
+  'create_order',
+  'update_order_status',
+  'generate_invoice',
+  'view_inventory',
+  'view_orders',
+  'cancel_order',
+  'manage_restaurant_settings',
+  'search_invoices',
+  'manage_customers',
+  'manage_menu_items',
+  'manage_categories',
+  'manage_staff',
+  'manage_roles',
+  'view_reports',
+];
+
 const DEMO_USER: AuthUser = {
   id: 'demo-admin',
   restaurantId: 'demo-restaurant',
@@ -15,16 +33,7 @@ const DEMO_USER: AuthUser = {
   fullName: 'Demo Admin',
   email: DEMO_IDENTIFIER,
   username: 'admin',
-  permissions: [
-    'view_dashboard',
-    'create_order',
-    'update_order_status',
-    'generate_invoice',
-    'view_inventory',
-    'view_orders',
-    'cancel_order',
-    'manage_restaurant_settings',
-  ],
+  permissions: DEMO_PERMISSIONS,
 };
 
 function getDemoUser(): AuthUser | null {
@@ -32,7 +41,8 @@ function getDemoUser(): AuthUser | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as AuthUser;
+    const user = JSON.parse(raw) as AuthUser;
+    return { ...DEMO_USER, ...user, permissions: DEMO_PERMISSIONS };
   } catch {
     localStorage.removeItem(DEMO_SESSION_KEY);
     return null;
