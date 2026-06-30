@@ -4,6 +4,8 @@ import { getApiUrl } from './config';
 import type { TokenPair } from '@/types';
 
 const baseURL = getApiUrl();
+const missingApiUrlMessage =
+  'Backend API URL is not configured. Open Server settings and enter your deployed backend API URL.';
 
 export const api = axios.create({ baseURL });
 
@@ -17,6 +19,10 @@ api.interceptors.response.use((response) => {
 
 // Attach access token.
 api.interceptors.request.use((config) => {
+  if (!baseURL) {
+    return Promise.reject(new Error(missingApiUrlMessage));
+  }
+
   const token = tokenStorage.getAccess();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

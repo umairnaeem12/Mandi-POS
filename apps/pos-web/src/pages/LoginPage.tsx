@@ -64,6 +64,8 @@ export function LoginPage() {
       const msg =
         err instanceof AxiosError
           ? ((err.response?.data as { message?: string })?.message ?? 'Login failed')
+          : err instanceof Error
+            ? err.message
           : 'Login failed';
       setServerError(Array.isArray(msg) ? msg.join(', ') : msg);
     }
@@ -244,7 +246,7 @@ export function LoginPage() {
                 <Input
                   value={serverUrl}
                   onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder="http://192.168.1.10:4000/api"
+                  placeholder="https://your-backend-domain.com/api"
                 />
                 <Button
                   type="button"
