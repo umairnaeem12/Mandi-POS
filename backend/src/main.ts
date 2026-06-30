@@ -27,8 +27,15 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  const allowedOrigins = (config.get<string>('FRONTEND_URL') ?? '').split(',').map((o) => o.trim()).filter(Boolean);
   app.enableCors({
-    origin: (config.get<string>('FRONTEND_URL') ?? '').split(',').map((o) => o.trim()),
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS origin not allowed: ${origin}`));
+    },
     credentials: true,
   });
 
