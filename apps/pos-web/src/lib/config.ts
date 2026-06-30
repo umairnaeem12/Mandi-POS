@@ -3,7 +3,8 @@
 // point at the cashier PC's LAN address, e.g. http://192.168.1.10:4000/api.
 
 const STORAGE_KEY = 'serverApiUrl';
-const ENV_API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+const DEFAULT_API = import.meta.env.DEV ? 'http://localhost:4000/api' : '';
+const ENV_API = import.meta.env.VITE_API_URL ?? DEFAULT_API;
 
 export function getApiUrl(): string {
   return localStorage.getItem(STORAGE_KEY) ?? ENV_API;
