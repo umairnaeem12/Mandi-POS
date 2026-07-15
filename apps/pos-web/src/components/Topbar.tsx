@@ -34,7 +34,7 @@ export function Topbar({ title, collapsed, onToggleCollapse, onOpenMobile }: Top
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-30 flex min-h-[4rem] items-center gap-3 border-b bg-card/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6">
       <button
         onClick={onOpenMobile}
         className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"

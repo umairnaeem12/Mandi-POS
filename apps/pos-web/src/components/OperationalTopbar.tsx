@@ -30,7 +30,7 @@ export function OperationalTopbar({ title, nav }: { title: string; nav?: ReactNo
   };
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-card px-4 md:px-6">
+    <header className="flex min-h-[4rem] shrink-0 items-center gap-4 border-b bg-card px-4 pt-[env(safe-area-inset-top)] md:px-6">
       <div className="flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-primary">
           {logoUrl ? (
