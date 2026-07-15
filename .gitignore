@@ -33,3 +33,6 @@ npm-debug.log*
 
 # Vite
 apps/pos-web/dist/
+
+# Tauri generated mobile projects
+apps/desktop/src-tauri/gen/
