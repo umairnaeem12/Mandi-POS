@@ -1,7 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from './tokenStorage';
 import { getApiUrl } from './config';
-import { getDemoAdapter } from './demoApi';
 import type { TokenPair } from '@/types';
 
 const baseURL = getApiUrl();
@@ -20,12 +19,6 @@ api.interceptors.response.use((response) => {
 
 // Attach access token.
 api.interceptors.request.use((config) => {
-  const demoAdapter = getDemoAdapter();
-  if (demoAdapter) {
-    config.adapter = demoAdapter;
-    return config;
-  }
-
   if (!baseURL) {
     return Promise.reject(new Error(missingApiUrlMessage));
   }

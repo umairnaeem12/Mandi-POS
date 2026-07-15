@@ -1,53 +1,14 @@
 import { create } from 'zustand';
+import { api } from '@/lib/axios';
 import { tokenStorage } from '@/lib/tokenStorage';
 import { disconnectSocket } from '@/lib/socket';
-import type { AuthUser } from '@/types';
+import type { AuthUser, TokenPair } from '@/types';
 
 type Status = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
-const DEMO_SESSION_KEY = 'demoAuthUser';
-const DEMO_IDENTIFIER = 'admin@restaurant.local';
-const DEMO_PERMISSIONS = [
-  'view_dashboard',
-  'create_order',
-  'update_order_status',
-  'generate_invoice',
-  'view_inventory',
-  'view_orders',
-  'cancel_order',
-  'manage_restaurant_settings',
-  'search_invoices',
-  'manage_customers',
-  'manage_menu_items',
-  'manage_categories',
-  'manage_staff',
-  'manage_roles',
-  'view_reports',
-];
-
-const DEMO_USER: AuthUser = {
-  id: 'demo-admin',
-  restaurantId: 'demo-restaurant',
-  roleId: 'demo-admin-role',
-  roleName: 'Admin',
-  fullName: 'Demo Admin',
-  email: DEMO_IDENTIFIER,
-  username: 'admin',
-  permissions: DEMO_PERMISSIONS,
-};
-
-function getDemoUser(): AuthUser | null {
-  const raw = localStorage.getItem(DEMO_SESSION_KEY);
-  if (!raw) return null;
-
-  try {
-    const user = JSON.parse(raw) as AuthUser;
-    return { ...DEMO_USER, ...user, permissions: DEMO_PERMISSIONS };
-  } catch {
-    localStorage.removeItem(DEMO_SESSION_KEY);
-    return null;
-  }
-}
+// Legacy key from the old demo build — cleared on boot so a stale value can't
+// keep the app in the removed demo mode.
+const LEGACY_DEMO_KEY = 'demoAuthUser';
 
 interface AuthState {
   user: AuthUser | null;
@@ -62,29 +23,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   status: 'idle',
 
-  login: async () => {
-    localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(DEMO_USER));
-    tokenStorage.clear();
-    set({ user: DEMO_USER, status: 'authenticated' });
+  // Authenticate against the real backend, store tokens, then load the user.
+  login: async (identifier, password) => {
+    set({ status: 'loading' });
+    try {
+      const { data: tokens } = await api.post<TokenPair>('/auth/login', { identifier, password });
+      tokenStorage.set(tokens);
+      const { data: user } = await api.get<AuthUser>('/auth/me');
+      set({ user, status: 'authenticated' });
+    } catch (err) {
+      tokenStorage.clear();
+      set({ user: null, status: 'unauthenticated' });
+      throw err;
+    }
   },
 
   logout: async () => {
+    const refreshToken = tokenStorage.getRefresh();
     disconnectSocket();
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout', { refreshToken });
+      } catch {
+        // Ignore logout errors — clear the local session regardless.
+      }
+    }
     tokenStorage.clear();
-    localStorage.removeItem(DEMO_SESSION_KEY);
     set({ user: null, status: 'unauthenticated' });
   },
 
   // Restore session on app load using the stored access/refresh tokens.
   bootstrap: async () => {
-    const demoUser = getDemoUser();
-    if (demoUser) {
-      set({ user: demoUser, status: 'authenticated' });
+    localStorage.removeItem(LEGACY_DEMO_KEY);
+    if (!tokenStorage.getAccess()) {
+      set({ status: 'unauthenticated' });
       return;
     }
-
-    tokenStorage.clear();
-    set({ status: 'unauthenticated' });
+    try {
+      // The axios interceptor transparently refreshes an expired access token.
+      const { data: user } = await api.get<AuthUser>('/auth/me');
+      set({ user, status: 'authenticated' });
+    } catch {
+      tokenStorage.clear();
+      set({ user: null, status: 'unauthenticated' });
+    }
   },
 
   hasPermission: (permission) => get().user?.permissions.includes(permission) ?? false,
@@ -93,6 +75,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // Forced logout from the axios interceptor when refresh fails.
 window.addEventListener('auth:logout', () => {
   tokenStorage.clear();
-  localStorage.removeItem(DEMO_SESSION_KEY);
   useAuthStore.setState({ user: null, status: 'unauthenticated' });
 });

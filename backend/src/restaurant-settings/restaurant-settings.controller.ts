@@ -13,7 +13,7 @@ import { RestaurantSettingsService } from './restaurant-settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { fileToUrl, imageMulterOptions } from '../uploads/multer.config';
+import { uploadedFileUrl, imageMulterOptions } from '../uploads/multer.config';
 
 @Controller('restaurant-settings')
 export class RestaurantSettingsController {
@@ -41,6 +41,6 @@ export class RestaurantSettingsController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    return this.settings.updateLogo(restaurantId, fileToUrl(file.filename));
+    return this.settings.updateLogo(restaurantId, uploadedFileUrl(file));
   }
 }

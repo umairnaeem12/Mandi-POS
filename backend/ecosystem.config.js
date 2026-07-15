@@ -17,7 +17,8 @@ module.exports = {
   apps: [
     {
       name: 'bukhari-pos-api',
-      script: 'dist/main.js',
+      // nest build emits to dist/src/main.js (prisma seed files shift the out root)
+      script: 'dist/src/main.js',
       cwd: __dirname,
       instances: 1, // single instance: keeps websockets + local uploads simple
       exec_mode: 'fork',

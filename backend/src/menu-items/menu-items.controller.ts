@@ -18,7 +18,7 @@ import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { fileToUrl, imageMulterOptions } from '../uploads/multer.config';
+import { uploadedFileUrl, imageMulterOptions } from '../uploads/multer.config';
 
 @Controller('menu-items')
 export class MenuItemsController {
@@ -78,7 +78,7 @@ export class MenuItemsController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    return this.menuItems.addImage(restaurantId, id, fileToUrl(file.filename));
+    return this.menuItems.addImage(restaurantId, id, uploadedFileUrl(file));
   }
 
   @Delete(':id')
