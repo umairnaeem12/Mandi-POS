@@ -40,6 +40,11 @@ jobs:
         run: npm ci
 
       - name: Build web frontend
+        # Bake the live production backend URL into the desktop build so the
+        # installed app connects to the real server on any network, not localhost/LAN.
+        env:
+          VITE_API_URL: https://d3lel790c2307j.cloudfront.net/api
+          VITE_SOCKET_URL: https://d3lel790c2307j.cloudfront.net
         run: npm run build:web
 
       - name: Build Windows desktop bundle
