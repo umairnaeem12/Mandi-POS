@@ -19,6 +19,9 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    # Allow the "Publish Release" step to create/update the GitHub Release for the tag.
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
