@@ -8,35 +8,45 @@ import { useSocketEvent } from '@/lib/socket';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { formatMoney, minutesSince } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { tablePhoto } from '@/lib/tablePhotos';
 import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { CardGridSkeleton } from '@/components/Skeletons';
 import { EmptyState } from '@/components/EmptyState';
 
-const STATUS: Record<TableStatus, { label: string; card: string; dot: string; badge: string }> = {
+// `badge` is the on-white variant; `onPhoto` is the solid fill used over the
+// card's photo banner, where a translucent tint would wash out.
+const STATUS: Record<
+  TableStatus,
+  { label: string; card: string; dot: string; badge: string; onPhoto: string }
+> = {
   AVAILABLE: {
     label: 'Available',
     card: 'border-success/30 hover:border-success/60',
     dot: 'bg-success',
     badge: 'bg-success/10 text-success',
+    onPhoto: 'bg-success text-success-foreground',
   },
   OCCUPIED: {
     label: 'Occupied',
     card: 'border-primary/40 hover:border-primary/70 bg-primary/[0.03]',
     dot: 'bg-primary',
     badge: 'bg-primary/10 text-primary',
+    onPhoto: 'bg-primary text-primary-foreground',
   },
   RESERVED: {
     label: 'Reserved',
     card: 'border-warning/40 hover:border-warning/70',
     dot: 'bg-warning',
     badge: 'bg-warning/15 text-warning-foreground',
+    onPhoto: 'bg-warning text-warning-foreground',
   },
   CLEANING: {
     label: 'Cleaning',
     card: 'border-border hover:border-slate-400',
     dot: 'bg-slate-400',
     badge: 'bg-muted text-muted-foreground',
+    onPhoto: 'bg-slate-600 text-white',
   },
 };
 
@@ -129,22 +139,35 @@ function TableCard({
       whileHover={{ scale: 1.02 }}
       onClick={onClick}
       className={cn(
-        'flex flex-col rounded-xl border-2 bg-card p-4 text-left shadow-card transition-shadow hover:shadow-card-hover',
+        'flex flex-col overflow-hidden rounded-xl border-2 bg-card text-left shadow-card transition-shadow hover:shadow-card-hover',
         st.card,
       )}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-base font-bold text-foreground">{table.name}</div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Users className="h-3 w-3" /> {table.capacity} seats
+      {/* Photo banner with the table identity laid over it. */}
+      <div className="relative h-28 w-full overflow-hidden bg-muted">
+        <img
+          src={tablePhoto(table.tableNumber)}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2.5">
+          <div className="min-w-0">
+            <div className="truncate text-base font-bold text-white drop-shadow">{table.name}</div>
+            <div className="flex items-center gap-1 text-xs text-white/90 drop-shadow">
+              <Users className="h-3 w-3" /> {table.capacity} seats
+            </div>
           </div>
+          {/* Solid fill — the translucent card badge is unreadable over a photo. */}
+          <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold', st.onPhoto)}>
+            {st.label}
+          </span>
         </div>
-        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', st.badge)}>{st.label}</span>
       </div>
 
       {order ? (
-        <div className="mt-3 space-y-1 border-t pt-3 text-xs">
+        <div className="space-y-1 p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-medium text-foreground">{order.orderNumber}</span>
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{order.status}</Badge>
@@ -157,7 +180,7 @@ function TableCard({
           </div>
         </div>
       ) : (
-        <div className="mt-3 border-t pt-3 text-xs text-muted-foreground">Tap to start an order</div>
+        <div className="p-3 text-xs text-muted-foreground">Tap to start an order</div>
       )}
     </motion.button>
   );

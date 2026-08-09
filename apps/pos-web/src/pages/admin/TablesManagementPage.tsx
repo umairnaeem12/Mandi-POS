@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CardGridSkeleton } from '@/components/Skeletons';
+import { tablePhoto } from '@/lib/tablePhotos';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
@@ -125,17 +126,35 @@ export function TablesManagementPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {tables.map((t) => (
-            <div key={t.id} className="flex flex-col rounded-xl border bg-card p-4 shadow-card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-base font-bold text-foreground">{t.name}</div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" /> {t.capacity} seats · #{t.tableNumber}
+            <div key={t.id} className="relative flex flex-col overflow-hidden rounded-xl border bg-card shadow-card">
+              {/* Photo banner — fills what used to be dead white space. */}
+              <div className="relative h-32 w-full overflow-hidden bg-muted">
+                <img
+                  src={tablePhoto(t.tableNumber)}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-3">
+                  <div>
+                    <div className="text-base font-bold text-white drop-shadow">{t.name}</div>
+                    <div className="flex items-center gap-1 text-xs text-white/90 drop-shadow">
+                      <Users className="h-3 w-3" /> {t.capacity} seats · #{t.tableNumber}
+                    </div>
                   </div>
+                  <Badge variant={tableStatusVariant[t.status]}>{t.status}</Badge>
                 </div>
+              </div>
+
+              <div className="absolute right-1.5 top-1.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="bg-black/35 text-white hover:bg-black/55 hover:text-white"
+                    >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -177,14 +196,11 @@ export function TablesManagementPage() {
                 </DropdownMenu>
               </div>
 
-              <div className="mt-3">
-                <Badge variant={tableStatusVariant[t.status]}>{t.status}</Badge>
-              </div>
-
+              <div className="flex flex-1 flex-col p-3">
               {t.activeOrder ? (
                 <button
                   onClick={() => navigate(`/admin/orders/${t.activeOrder!.id}`)}
-                  className="mt-3 space-y-1 rounded-lg border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-accent"
+                  className="flex-1 space-y-1 rounded-lg border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-accent"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-foreground">{t.activeOrder.orderNumber}</span>
@@ -198,10 +214,11 @@ export function TablesManagementPage() {
                   </div>
                 </button>
               ) : (
-                <div className="mt-3 rounded-lg border border-dashed p-2.5 text-center text-xs text-muted-foreground">
+                <div className="rounded-lg border border-dashed p-2.5 text-center text-xs text-muted-foreground">
                   No active order
                 </div>
               )}
+              </div>
             </div>
           ))}
         </div>
