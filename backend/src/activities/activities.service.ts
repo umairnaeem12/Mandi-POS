@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../socket/realtime.gateway';
+import { RealtimeService } from '../socket/realtime.service';
 
 interface LogInput {
   restaurantId: string;
@@ -18,7 +18,7 @@ export class ActivitiesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: RealtimeGateway,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // Fire-and-forget: never let audit logging break the main flow.

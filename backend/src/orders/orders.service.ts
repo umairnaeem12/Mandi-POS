@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../socket/realtime.gateway';
+import { RealtimeService } from '../socket/realtime.service';
 import { ActivitiesService } from '../activities/activities.service';
 import {
   AddItemDto,
@@ -28,7 +28,7 @@ const orderInclude = {
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: RealtimeGateway,
+    private readonly realtime: RealtimeService,
     private readonly activities: ActivitiesService,
   ) {}
 
@@ -147,7 +147,7 @@ export class OrdersService {
         tableId: order.tableId,
         status: 'OCCUPIED',
       });
-      this.realtime.toTable(order.tableId, 'table.order_created', order);
+      this.realtime.toTable(restaurantId, order.tableId, 'table.order_created', order);
     }
     return order;
   }
@@ -284,7 +284,7 @@ export class OrdersService {
     this.realtime.toRestaurant(restaurantId, 'order.status_changed', { id, status });
     this.realtime.toKitchen(restaurantId, 'kitchen.order_status_changed', { id, status });
     if (updated.tableId) {
-      this.realtime.toTable(updated.tableId, 'order.status_changed', { id, status });
+      this.realtime.toTable(restaurantId, updated.tableId, 'order.status_changed', { id, status });
       if (status === 'COMPLETED') {
         this.realtime.toRestaurant(restaurantId, 'table.status_changed', {
           tableId: updated.tableId,

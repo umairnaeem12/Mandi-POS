@@ -5,6 +5,7 @@
   "description": "Restaurant POS NestJS backend",
   "scripts": {
     "build": "nest build",
+    "vercel-build": "sh scripts/vercel-build.sh",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
@@ -15,6 +16,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:seed:menu": "ts-node prisma/seed-menu.ts",
+    "prisma:seed:permissions": "ts-node prisma/seed-permissions.ts",
     "test:e2e:setup": "DATABASE_URL=${TEST_DATABASE_URL:-postgresql://macbook@localhost:5432/restaurant_pos_test?schema=public} prisma migrate reset --force",
     "test:e2e": "DATABASE_URL=${TEST_DATABASE_URL:-postgresql://macbook@localhost:5432/restaurant_pos_test?schema=public} jest --config test/jest-e2e.json --runInBand"
   },
@@ -32,6 +34,7 @@
     "@nestjs/platform-socket.io": "^10.4.4",
     "@nestjs/websockets": "^10.4.4",
     "@prisma/client": "^5.20.0",
+    "@vercel/functions": "^3.10.5",
     "argon2": "^0.41.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

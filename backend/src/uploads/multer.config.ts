@@ -9,18 +9,44 @@ import { existsSync, mkdirSync } from 'node:fs';
 export const UPLOAD_DIR = process.env.UPLOAD_DIR ?? './uploads';
 export const UPLOAD_URL_PREFIX = '/uploads';
 
-// When AWS_S3_BUCKET is set (e.g. on Elastic Beanstalk, whose disk is
-// ephemeral) uploads go to S3; otherwise they fall back to local disk
-// (single-box EC2 / dev). This keeps the existing deploy working while
-// enabling the managed S3 path.
-const S3_BUCKET = process.env.AWS_S3_BUCKET;
-const S3_REGION = process.env.AWS_REGION ?? 'us-east-1';
+// With a bucket configured, uploads go to S3 or any S3-compatible store (Supabase
+// Storage via S3_ENDPOINT); otherwise local disk, which only suits a single
+// long-running box. Vercel's disk is read-only, so it needs the bucket.
+// S3_* names come first because Vercel reserves the AWS_* env vars.
+const S3_BUCKET = process.env.S3_BUCKET ?? process.env.AWS_S3_BUCKET;
+const S3_REGION = process.env.S3_REGION ?? process.env.AWS_REGION ?? 'us-east-1';
+const S3_ENDPOINT = process.env.S3_ENDPOINT?.replace(/\/+$/, '');
 export const useS3 = Boolean(S3_BUCKET);
 
-const s3Client = useS3 ? new S3Client({ region: S3_REGION }) : null;
+// Supabase serves public objects from a different path than its S3 endpoint.
+const S3_PUBLIC_URL = (
+  process.env.S3_PUBLIC_URL ??
+  (S3_ENDPOINT?.endsWith('/storage/v1/s3')
+    ? `${S3_ENDPOINT.replace(/\/storage\/v1\/s3$/, '/storage/v1/object/public')}/${S3_BUCKET}`
+    : undefined)
+)?.replace(/\/+$/, '');
+
+const s3Client = useS3
+  ? new S3Client({
+      region: S3_REGION,
+      endpoint: S3_ENDPOINT,
+      forcePathStyle: Boolean(S3_ENDPOINT),
+      credentials:
+        process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY
+          ? {
+              accessKeyId: process.env.S3_ACCESS_KEY_ID,
+              secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+            }
+          : undefined,
+    })
+  : null;
 
 if (!useS3 && !existsSync(UPLOAD_DIR)) {
-  mkdirSync(UPLOAD_DIR, { recursive: true });
+  try {
+    mkdirSync(UPLOAD_DIR, { recursive: true });
+  } catch (err) {
+    console.warn(`Upload dir ${UPLOAD_DIR} unavailable (${(err as Error).message}); set S3_BUCKET.`);
+  }
 }
 
 const ALLOWED = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
@@ -43,7 +69,7 @@ const storage: StorageEngine = useS3
 // Shared multer options for image uploads (logo, product images).
 export const imageMulterOptions = {
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 4 * 1024 * 1024 }, // 4 MB: Vercel rejects request bodies over 4.5 MB
   fileFilter: (
     _req: unknown,
     file: { originalname: string },
@@ -65,6 +91,7 @@ export const fileToUrl = (filename: string): string => `${UPLOAD_URL_PREFIX}/${f
 export const uploadedFileUrl = (file: Express.Multer.File): string => {
   const s3File = file as Express.Multer.File & { location?: string; key?: string };
   if (useS3) {
+    if (S3_PUBLIC_URL) return `${S3_PUBLIC_URL}/${s3File.key}`;
     return s3File.location ?? `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3File.key}`;
   }
   return fileToUrl(file.filename);

@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { TableStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../socket/realtime.gateway';
+import { RealtimeService } from '../socket/realtime.service';
 import { CreateTableDto, UpdateTableDto } from './dto/table.dto';
 
 const ACTIVE_STATUSES: TableStatus[] = ['OCCUPIED', 'RESERVED', 'CLEANING'];
@@ -10,7 +10,7 @@ const ACTIVE_STATUSES: TableStatus[] = ['OCCUPIED', 'RESERVED', 'CLEANING'];
 export class TablesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: RealtimeGateway,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // Each table with its current active order summary (for the table grid).

@@ -10,20 +10,15 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
+import { rooms } from './rooms';
 
 interface SocketData {
   userId?: string;
   restaurantId?: string;
 }
 
-// Room name helpers keep all event targeting consistent.
-const rooms = {
-  restaurant: (id: string) => `restaurant:${id}`,
-  kitchen: (id: string) => `kitchen:${id}`,
-  adminDashboard: (id: string) => `admin-dashboard:${id}`,
-  table: (id: string) => `table:${id}`,
-};
-
+// Socket.IO transport, used when Supabase Realtime is not configured (local dev,
+// the long-running AWS deploy). Services publish through RealtimeService.
 @WebSocketGateway({ cors: { origin: true, credentials: true } })
 export class RealtimeGateway implements OnGatewayConnection {
   @WebSocketServer() server!: Server;
@@ -71,24 +66,11 @@ export class RealtimeGateway implements OnGatewayConnection {
 
   @SubscribeMessage('join.table')
   joinTable(@ConnectedSocket() client: Socket, @MessageBody() body: { tableId: string }): void {
-    if (body?.tableId) void client.join(rooms.table(body.tableId));
+    const { restaurantId } = client.data as SocketData;
+    if (restaurantId && body?.tableId) void client.join(rooms.table(restaurantId, body.tableId));
   }
 
-  // ---- Emit helpers (used by services) ----
-
-  toRestaurant(restaurantId: string, event: string, payload: unknown): void {
-    this.server.to(rooms.restaurant(restaurantId)).emit(event, payload);
-  }
-
-  toKitchen(restaurantId: string, event: string, payload: unknown): void {
-    this.server.to(rooms.kitchen(restaurantId)).emit(event, payload);
-  }
-
-  toAdminDashboard(restaurantId: string, event: string, payload: unknown): void {
-    this.server.to(rooms.adminDashboard(restaurantId)).emit(event, payload);
-  }
-
-  toTable(tableId: string, event: string, payload: unknown): void {
-    this.server.to(rooms.table(tableId)).emit(event, payload);
+  emit(room: string, event: string, payload: unknown): void {
+    this.server?.to(room).emit(event, payload);
   }
 }

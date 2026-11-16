@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, InventoryTransactionType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../socket/realtime.gateway';
+import { RealtimeService } from '../socket/realtime.service';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { AdjustmentDto, StockInDto, StockOutDto } from './dto/stock-movement.dto';
@@ -10,7 +10,7 @@ import { AdjustmentDto, StockInDto, StockOutDto } from './dto/stock-movement.dto
 export class InventoryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: RealtimeGateway,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // ---- Items ----

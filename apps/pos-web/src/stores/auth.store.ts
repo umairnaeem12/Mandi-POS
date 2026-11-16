@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { api } from '@/lib/axios';
 import { tokenStorage } from '@/lib/tokenStorage';
-import { disconnectSocket } from '@/lib/socket';
+import { disconnectRealtime } from '@/lib/socket';
 import type { AuthUser, TokenPair } from '@/types';
 
 type Status = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     const refreshToken = tokenStorage.getRefresh();
-    disconnectSocket();
+    disconnectRealtime();
     if (refreshToken) {
       try {
         await api.post('/auth/logout', { refreshToken });
