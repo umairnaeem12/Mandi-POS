@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { landingPath } from '@/lib/landing';
+import { connectRealtime, disconnectRealtime } from '@/lib/socket';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AdminLayout } from '@/components/AdminLayout';
 import { WaiterLayout } from '@/components/WaiterLayout';
@@ -41,10 +42,16 @@ function PageLoader() {
 
 export default function App() {
   const bootstrap = useAuthStore((s) => s.bootstrap);
+  const status = useAuthStore((s) => s.status);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    if (status === 'authenticated') connectRealtime();
+    else if (status === 'unauthenticated') disconnectRealtime();
+  }, [status]);
 
   return (
     <BrowserRouter>

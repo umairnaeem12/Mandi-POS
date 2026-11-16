@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../socket/realtime.gateway';
+import { RealtimeService } from '../socket/realtime.service';
 import { ActivitiesService } from '../activities/activities.service';
 import { CreateInvoiceDto, PayInvoiceDto } from './dto/invoice.dto';
 
@@ -20,7 +20,7 @@ const invoiceInclude = {
 export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: RealtimeGateway,
+    private readonly realtime: RealtimeService,
     private readonly activities: ActivitiesService,
   ) {}
 
