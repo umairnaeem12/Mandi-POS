@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, UtensilsCrossed } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, LayoutDashboard, LogOut, UtensilsCrossed } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/auth.store';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { assetUrl } from '@/lib/assets';
@@ -20,9 +21,11 @@ import { LangToggle } from '@/components/LangToggle';
 
 // Header for full-screen role views (POS / Kitchen) that don't use the admin sidebar.
 export function OperationalTopbar({ title, nav }: { title: string; nav?: ReactNode }) {
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasPermission } = useAuthStore();
   const { name, logoUrl } = useRestaurant();
   const navigate = useNavigate();
+  // Admins and managers open POS/Kitchen from the sidebar and need a way back.
+  const canOpenDashboard = hasPermission('view_dashboard');
 
   const handleLogout = async () => {
     await logout();
@@ -31,6 +34,14 @@ export function OperationalTopbar({ title, nav }: { title: string; nav?: ReactNo
 
   return (
     <header className="flex min-h-[4rem] shrink-0 items-center gap-4 border-b bg-card px-4 pt-[env(safe-area-inset-top)] md:px-6">
+      {canOpenDashboard && (
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin/dashboard" aria-label="Back to dashboard">
+            <ArrowLeft />
+            <span className="hidden sm:inline">Dashboard</span>
+          </Link>
+        </Button>
+      )}
       <div className="flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-primary">
           {logoUrl ? (
@@ -74,6 +85,12 @@ export function OperationalTopbar({ title, nav }: { title: string; nav?: ReactNo
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {canOpenDashboard && (
+              <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" />
               Logout

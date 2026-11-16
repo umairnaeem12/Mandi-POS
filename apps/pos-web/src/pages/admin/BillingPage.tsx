@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Receipt } from '@/components/Receipt';
+import { PaperSizeSelect, usePaperSize, useReceiptPrint } from '@/components/ReceiptPrint';
 import {
   Select,
   SelectContent,
@@ -31,6 +32,8 @@ export function BillingPage() {
   const { currency } = useRestaurant();
   const { dn } = useLang();
   const money = (v: string | number) => formatMoney(v, currency);
+  const [paper, setPaper] = usePaperSize();
+  const { printReceipt, printPortal } = useReceiptPrint();
 
   const orderQuery = useQuery({ queryKey: ['order', orderId], queryFn: () => ordersApi.get(orderId) });
 
@@ -91,6 +94,7 @@ export function BillingPage() {
 
   return (
     <div className="space-y-5">
+      {printPortal}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="icon" onClick={() => navigate('/admin/orders')}>
           <ArrowLeft className="h-4 w-4" />
@@ -220,8 +224,18 @@ export function BillingPage() {
                   <CheckCircle2 className="h-5 w-5" /> Payment complete
                 </div>
                 <p className="text-sm text-muted-foreground">Change returned: {money(invoice!.changeAmount)}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Paper size</Label>
+                  <PaperSizeSelect value={paper} onChange={setPaper} />
+                </div>
                 <div className="flex gap-2">
-                  <Button className="flex-1" onClick={() => { invoicesApi.print(invoice!.id).catch(() => undefined); window.print(); }}>
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      invoicesApi.print(invoice!.id).catch(() => undefined);
+                      printReceipt(invoice!, paper);
+                    }}
+                  >
                     <Printer className="h-4 w-4" /> Print Receipt
                   </Button>
                   <Button variant="outline" onClick={() => navigate('/admin/orders')}>Done</Button>
@@ -234,8 +248,8 @@ export function BillingPage() {
         {/* Receipt preview */}
         <div>
           {invoice ? (
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <Receipt invoice={invoice} />
+            <div className="overflow-x-auto rounded-lg border bg-muted/30 p-4">
+              <Receipt invoice={invoice} paper={paper} />
             </div>
           ) : (
             <div className="flex h-full min-h-[300px] items-center justify-center rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">

@@ -88,52 +88,81 @@
   }
 }
 
-/* Print: show only the receipt, sized for an 80mm thermal roll. */
-@page {
-  size: 80mm auto;
+/* Print. Receipts print from #print-root (components/ReceiptPrint.tsx), a copy
+   mounted straight under <body>. lib/print.ts writes the @page rule per paper,
+   measuring the receipt for thermal rolls.
+
+   On screen the copy is laid out off-screen at its printed size instead of
+   display:none, so its height can be measured. Fixed, so it adds no scroll. */
+#print-root {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+#print-root .receipt {
   margin: 0;
+}
+#print-root .receipt[data-paper='80mm'] {
+  width: 80mm;
+  max-width: 80mm;
+  padding: 3mm 4mm 6mm;
+}
+#print-root .receipt[data-paper='58mm'] {
+  width: 58mm;
+  max-width: 58mm;
+  padding: 2mm 2.5mm 5mm;
+}
+/* A4 margins come from @page, so the receipt fills the printable width. */
+#print-root .receipt[data-paper='A4'] {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+#print-root .receipt[data-paper='80mm'] .receipt-logo {
+  max-height: 22mm;
+}
+#print-root .receipt[data-paper='58mm'] .receipt-logo {
+  max-height: 16mm;
+}
+#print-root .receipt[data-paper='A4'] .receipt-logo {
+  max-height: 28mm;
 }
 
 @media print {
   html,
   body {
-    width: 80mm;
     margin: 0;
     padding: 0;
     background: #fff;
   }
-  /* Collapse everything except the receipt so the roll doesn't feed blank
-     pages for the hidden app chrome (visibility:hidden still reserves space). */
-  body * {
-    visibility: hidden;
+  /* display:none, not visibility:hidden, so the app takes no space and A4 gets
+     no trailing blank pages. Only while a print copy exists, so a plain Ctrl+P
+     elsewhere still prints the page. */
+  body:has(> #print-root) > *:not(#print-root) {
+    display: none !important;
   }
-  .receipt,
-  .receipt * {
+  #print-root {
+    position: static;
     visibility: visible;
   }
-  .receipt {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
-    max-width: 80mm;
-    padding: 3mm 4mm 6mm;
+  #print-root .receipt {
     color: #000;
-    font-size: 11px;
-    /* Thermal heads render grey dithering poorly — force solid black. */
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .receipt * {
+  #print-root .receipt * {
     color: #000 !important;
     border-color: #000 !important;
   }
-  .receipt-logo {
-    max-height: 22mm;
-    /* Logos are usually dark-on-transparent; keep them crisp, not grey. */
+  /* Thermal heads dither grey badly, so logos go solid black there. Office
+     printers keep the logo as it is. */
+  #print-root .receipt[data-paper='80mm'] .receipt-logo,
+  #print-root .receipt[data-paper='58mm'] .receipt-logo {
     filter: grayscale(100%) contrast(180%);
   }
-  /* Never split a line item across the tear line. */
+  /* Never split a line item across a page or the tear line. */
   .receipt-item,
   .receipt-header {
     break-inside: avoid;

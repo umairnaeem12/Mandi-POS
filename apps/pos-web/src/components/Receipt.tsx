@@ -1,15 +1,26 @@
 import type { Invoice } from '@/api/invoices';
 import { assetUrl } from '@/lib/assets';
+import type { PaperSize } from '@/lib/print';
 import { useRestaurant } from '@/hooks/useRestaurant';
+import { cn } from '@/lib/utils';
 
-// 80mm thermal receipt, laid out to match the client's existing printed bill:
-// logo + Arabic wordmark, address/mobile, then Item/Qty/Price/Total columns and
-// a "Grand Total" block. Print styles live in index.css (@media print).
-export function Receipt({ invoice }: { invoice: Invoice }) {
+// Receipt laid out to match the client's existing printed bill: logo + Arabic
+// wordmark, address/mobile, then item columns and a "Grand Total" block.
+// Text sizes are in em so one base size per paper scales the whole layout.
+// Print styles live in index.css (@media print); printing goes through ReceiptPrint.
+const PAPER_STYLE: Record<PaperSize, string> = {
+  '80mm': 'w-[302px] px-3 py-4 font-mono text-[11px]',
+  '58mm': 'w-[219px] px-2 py-3 font-mono text-[9.5px]',
+  A4: 'w-full max-w-[720px] px-8 py-8 font-sans text-[13px]',
+};
+
+export function Receipt({ invoice, paper = '80mm' }: { invoice: Invoice; paper?: PaperSize }) {
   const { settings } = useRestaurant();
   const c = invoice.currencySymbol;
   const money = (v: string | number) => `${c} ${Number(v).toFixed(2)}`;
   const num = (v: string | number) => Number(v).toFixed(2);
+  // 58mm cannot fit four columns, so unit price moves under the item name.
+  const narrow = paper === '58mm';
 
   const dt = new Date(invoice.createdAt);
   const stamp = `${dt.toLocaleDateString()}, ${dt.toLocaleTimeString([], {
@@ -34,14 +45,20 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
     .filter(Boolean);
 
   return (
-    <div className="receipt mx-auto w-[302px] bg-white px-3 py-4 font-mono text-[11px] leading-relaxed text-black">
+    <div
+      data-paper={paper}
+      className={cn('receipt mx-auto bg-white leading-relaxed text-black', PAPER_STYLE[paper])}
+    >
       {/* ---- Header: logo, bilingual name, address, mobile ---- */}
       <header className="receipt-header text-center">
         {logoUrl && (
           <img
             src={assetUrl(logoUrl)}
             alt=""
-            className="receipt-logo mx-auto mb-2 max-h-28 w-auto max-w-[85%] object-contain"
+            className={cn(
+              'receipt-logo mx-auto mb-2 w-auto max-w-[85%] object-contain',
+              narrow ? 'max-h-20' : 'max-h-28',
+            )}
           />
         )}
         {headerLines.map((line, i) => (
@@ -50,19 +67,19 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
             dir={isArabic(line) ? 'rtl' : 'ltr'}
             className={
               i === 0
-                ? 'text-[15px] font-bold uppercase tracking-[0.1em]'
-                : 'mt-0.5 text-[13px] font-bold'
+                ? 'text-[1.36em] font-bold uppercase tracking-[0.1em]'
+                : 'mt-0.5 text-[1.18em] font-bold'
             }
           >
             {line}
           </div>
         ))}
         {address && (
-          <div className="mt-2 whitespace-pre-line px-1 text-[10px] font-semibold leading-snug">
+          <div className="mt-2 whitespace-pre-line px-1 text-[0.91em] font-semibold leading-snug">
             {address}
           </div>
         )}
-        {contact && <div className="mt-1 text-[10px] font-semibold">Mobile: {contact}</div>}
+        {contact && <div className="mt-1 text-[0.91em] font-semibold">Mobile: {contact}</div>}
       </header>
 
       {/* Heavy rule under the header, as on the printed bill. */}
@@ -79,19 +96,28 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
 
       <Rule className="my-2" />
 
-      {/* ---- Items: Item | Qty | Price | Total ---- */}
+      {/* ---- Items: Item | Qty | Price | Total (58mm: Item | Qty | Total) ---- */}
       <table className="w-full table-fixed border-collapse">
         <colgroup>
           <col />
-          <col className="w-[13%]" />
-          <col className="w-[22%]" />
-          <col className="w-[24%]" />
+          {narrow ? (
+            <>
+              <col className="w-[15%]" />
+              <col className="w-[32%]" />
+            </>
+          ) : (
+            <>
+              <col className={paper === 'A4' ? 'w-[10%]' : 'w-[13%]'} />
+              <col className={paper === 'A4' ? 'w-[18%]' : 'w-[22%]'} />
+              <col className={paper === 'A4' ? 'w-[20%]' : 'w-[24%]'} />
+            </>
+          )}
         </colgroup>
         <thead>
           <tr>
             <th className="pb-1.5 pr-2 text-left font-bold">Item</th>
             <th className="pb-1.5 pr-1 text-center font-bold">Qty</th>
-            <th className="pb-1.5 pr-2 text-right font-bold">Price</th>
+            {!narrow && <th className="pb-1.5 pr-2 text-right font-bold">Price</th>}
             <th className="pb-1.5 text-right font-bold">Total</th>
           </tr>
         </thead>
@@ -101,13 +127,21 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
               <td className="py-1.5 pr-2 text-left">
                 <div className="break-words">{it.itemName}</div>
                 {it.itemNameAr && (
-                  <div dir="rtl" className="mt-0.5 break-words text-[10px] leading-snug">
+                  <div
+                    dir="rtl"
+                    className={cn(
+                      'mt-0.5 break-words leading-snug',
+                      // Arabic glyphs run small in the A4 sans font; keep them level with English.
+                      paper === 'A4' ? 'text-[1em]' : 'text-[0.91em]',
+                    )}
+                  >
                     {it.itemNameAr}
                   </div>
                 )}
+                {narrow && <div className="mt-0.5 text-[0.91em] tabular-nums">@ {num(it.unitPrice)}</div>}
               </td>
               <td className="py-1.5 pr-1 text-center tabular-nums">{it.quantity}</td>
-              <td className="py-1.5 pr-2 text-right tabular-nums">{num(it.unitPrice)}</td>
+              {!narrow && <td className="py-1.5 pr-2 text-right tabular-nums">{num(it.unitPrice)}</td>}
               <td className="py-1.5 text-right tabular-nums">{num(it.totalPrice)}</td>
             </tr>
           ))}
@@ -136,7 +170,7 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
       <Rule className="my-2" />
 
       <section className="space-y-1">
-        <div className="flex items-baseline justify-between gap-3 text-[13px] font-bold">
+        <div className="flex items-baseline justify-between gap-3 text-[1.18em] font-bold">
           <span>Grand Total</span>
           <span className="tabular-nums">{money(invoice.grandTotal)}</span>
         </div>
@@ -149,11 +183,7 @@ export function Receipt({ invoice }: { invoice: Invoice }) {
       <Rule className="my-2.5" />
       <footer className="text-center">
         {footerLines.map((line, i) => (
-          <div
-            key={i}
-            dir={isArabic(line) ? 'rtl' : 'ltr'}
-            className={i === 0 ? 'text-[11px] font-bold' : 'mt-1 text-[11px] font-bold'}
-          >
+          <div key={i} dir={isArabic(line) ? 'rtl' : 'ltr'} className={cn('font-bold', i > 0 && 'mt-1')}>
             {line}
           </div>
         ))}

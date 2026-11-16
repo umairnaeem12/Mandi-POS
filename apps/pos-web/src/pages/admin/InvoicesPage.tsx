@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableSkeleton } from '@/components/Skeletons';
 import { EmptyState } from '@/components/EmptyState';
 import { Receipt } from '@/components/Receipt';
+import { PaperSizeSelect, usePaperSize, useReceiptPrint } from '@/components/ReceiptPrint';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const STATUS_FILTERS: (PaymentStatus | 'ALL')[] = ['ALL', 'PAID', 'PARTIAL', 'UNPAID', 'REFUNDED'];
@@ -23,6 +24,8 @@ export function InvoicesPage() {
   const [active, setActive] = useState('');
   const [status, setStatus] = useState<PaymentStatus | 'ALL'>('ALL');
   const [selected, setSelected] = useState<Invoice | null>(null);
+  const [paper, setPaper] = usePaperSize();
+  const { printReceipt: printCopy, printPortal } = useReceiptPrint();
 
   const filtering = !!active || status !== 'ALL';
   const { data, isLoading } = useQuery({
@@ -43,14 +46,15 @@ export function InvoicesPage() {
   const money = (v: string | number, c?: string) => formatMoney(v, c ?? 'Rs');
   const invoices = data ?? [];
 
+  // Prints straight away at this device's paper size; no dialog needed.
   const printReceipt = (inv: Invoice) => {
-    setSelected(inv);
     invoicesApi.print(inv.id).catch(() => undefined);
-    setTimeout(() => window.print(), 200);
+    printCopy(inv, paper);
   };
 
   return (
     <div className="space-y-5">
+      {printPortal}
       <PageHeader title="Invoices" description="Search, view, and print receipts." />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -134,7 +138,7 @@ export function InvoicesPage() {
                       <Button variant="ghost" size="icon-sm" onClick={() => setSelected(inv)} title="View">
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => printReceipt(inv)} title="Print">
+                      <Button variant="ghost" size="icon-sm" onClick={() => printReceipt(inv)} title={`Print (${paper})`}>
                         <Printer className="h-4 w-4" />
                       </Button>
                     </div>
@@ -147,9 +151,12 @@ export function InvoicesPage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-sm p-0">
-          <div className="max-h-[80vh] overflow-auto p-4">{selected && <Receipt invoice={selected} />}</div>
-          <div className="flex justify-end gap-2 border-t p-3 print:hidden">
+        <DialogContent className={cn('p-0', paper === 'A4' ? 'max-w-3xl' : 'max-w-sm')}>
+          <div className="max-h-[75vh] overflow-auto bg-muted/30 p-4">
+            {selected && <Receipt invoice={selected} paper={paper} />}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t p-3">
+            <PaperSizeSelect value={paper} onChange={setPaper} className="mr-auto" />
             <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
             <Button onClick={() => selected && printReceipt(selected)}>
               <Printer className="h-4 w-4" /> Print

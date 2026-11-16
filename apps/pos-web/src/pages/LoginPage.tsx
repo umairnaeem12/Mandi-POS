@@ -49,9 +49,10 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    // Seed credentials are pre-filled only in local dev; the deployed site is public.
     defaultValues: {
-      identifier: 'admin@restaurant.local',
-      password: 'admin123',
+      identifier: import.meta.env.DEV ? 'admin@restaurant.local' : '',
+      password: import.meta.env.DEV ? 'admin123' : '',
       rememberMe: true,
     },
   });
@@ -224,9 +225,11 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-5 text-center text-xs text-muted-foreground">
-            Default: admin@restaurant.local / admin123
-          </p>
+          {import.meta.env.DEV && (
+            <p className="mt-5 text-center text-xs text-muted-foreground">
+              Default: admin@restaurant.local / admin123
+            </p>
+          )}
 
         </motion.div>
       </div>

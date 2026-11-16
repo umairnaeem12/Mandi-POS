@@ -184,6 +184,17 @@ Supabase Storage is used through its S3 API via `S3_ENDPOINT`, `S3_REGION`,
 `S3_PUBLIC_URL`. Images are capped at 4 MB because Vercel limits request bodies to 4.5 MB.
 Local disk does not work on Vercel: the filesystem is read-only.
 
+### Printing
+
+Receipts print only from `BillingPage` and `InvoicesPage`, both through `useReceiptPrint`
+in [ReceiptPrint.tsx](apps/pos-web/src/components/ReceiptPrint.tsx). It mounts a copy of
+`<Receipt>` in `#print-root` directly under `<body>`. Never call `window.print()` on the
+on-screen preview: inside a dialog it lands at a fixed position, and the hidden app adds
+blank A4 pages. Paper size (80mm, 58mm, A4) is per device in `localStorage`.
+[print.ts](apps/pos-web/src/lib/print.ts) rewrites `@page` before each print. Chrome ignores
+`size: 80mm auto`, so thermal rolls get the receipt's measured height. That is why
+`#print-root` is laid out off-screen at print width rather than `display: none`.
+
 ## Conventions
 
 - Backend env vars are validated by Joi at boot ([env.validation.ts](backend/src/config/env.validation.ts));
