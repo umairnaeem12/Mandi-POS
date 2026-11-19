@@ -8,6 +8,7 @@ import { categoriesApi } from '@/api/categories';
 import { assetUrl } from '@/lib/assets';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useLang } from '@/stores/lang.store';
+import type { TKey } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { toast } from '@/components/ui/sonner';
 import { PageHeader } from '@/components/PageHeader';
@@ -40,10 +41,10 @@ function availabilityOf(item: { isAvailable: boolean; isOutOfStock: boolean }): 
   return 'AVAILABLE';
 }
 
-const AVAIL_BADGE: Record<Availability, { variant: 'success' | 'warning' | 'secondary'; label: string }> = {
-  AVAILABLE: { variant: 'success', label: 'Available' },
-  OUT_OF_STOCK: { variant: 'warning', label: 'Out of stock' },
-  INACTIVE: { variant: 'secondary', label: 'Inactive' },
+const AVAIL_BADGE: Record<Availability, { variant: 'success' | 'warning' | 'secondary'; label: TKey }> = {
+  AVAILABLE: { variant: 'success', label: 'menu.availAvailable' },
+  OUT_OF_STOCK: { variant: 'warning', label: 'menu.availOutOfStock' },
+  INACTIVE: { variant: 'secondary', label: 'common.inactive' },
 };
 
 interface FormValues {
@@ -58,7 +59,7 @@ interface FormValues {
 export function MenuItemsPage() {
   const qc = useQueryClient();
   const { currency } = useRestaurant();
-  const { dn } = useLang();
+  const { dn, t } = useLang();
   const itemsQuery = useQuery({ queryKey: ['menu-items'], queryFn: () => menuItemsApi.list() });
   const catsQuery = useQuery({ queryKey: ['categories'], queryFn: () => categoriesApi.list() });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['menu-items'] });
@@ -70,13 +71,17 @@ export function MenuItemsPage() {
   const [cat, setCat] = useState('ALL');
 
   const onError = (e: unknown) =>
-    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed');
+    toast.error(
+      e instanceof AxiosError
+        ? ((e.response?.data as { message?: string })?.message ?? t('common.somethingWentWrong'))
+        : t('common.somethingWentWrong'),
+    );
 
   const saveMut = useMutation({
     mutationFn: (v: MenuItemInput) =>
       editing ? menuItemsApi.update(editing.id, v) : menuItemsApi.create(v),
     onSuccess: () => {
-      toast.success(editing ? 'Item updated' : 'Item added');
+      toast.success(editing ? t('menu.itemUpdated') : t('menu.itemAdded'));
       setFormOpen(false);
       setEditing(null);
       invalidate();
@@ -92,20 +97,20 @@ export function MenuItemsPage() {
 
   const imageMut = useMutation({
     mutationFn: ({ id, file }: { id: string; file: File }) => menuItemsApi.uploadImage(id, file),
-    onSuccess: () => { toast.success('Image updated'); invalidate(); },
+    onSuccess: () => { toast.success(t('menu.imageUpdated')); invalidate(); },
     onError,
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => menuItemsApi.remove(id),
-    onSuccess: () => { toast.success('Item deleted'); setDeleting(null); invalidate(); },
+    onSuccess: () => { toast.success(t('menu.itemDeleted')); setDeleting(null); invalidate(); },
     onError,
   });
 
   const items = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (itemsQuery.data ?? []).filter(
-      (m) => (cat === 'ALL' || m.categoryId === cat) && (!q || m.name.toLowerCase().includes(q)),
+      (m) => (cat === 'ALL' || m.categoryId === cat) && (!q || m.name.toLowerCase().includes(q) || !!m.nameAr?.toLowerCase().includes(q)),
     );
   }, [itemsQuery.data, search, cat]);
 
@@ -114,24 +119,24 @@ export function MenuItemsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Menu Items"
-        description="Manage the items customers can order."
+        title={t('menu.title')}
+        description={t('menu.subtitle')}
         actions={
           <Button onClick={() => { setEditing(null); setFormOpen(true); }} disabled={(catsQuery.data?.length ?? 0) === 0}>
-            <Plus className="h-4 w-4" /> Add Item
+            <Plus className="h-4 w-4" /> {t('menu.addItem')}
           </Button>
         }
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" className="pl-9" />
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('menu.searchItems')} className="ps-9" />
         </div>
         <Select value={cat} onValueChange={setCat}>
           <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All categories</SelectItem>
+            <SelectItem value="ALL">{t('menu.allCategories')}</SelectItem>
             {catsQuery.data?.map((c) => (
               <SelectItem key={c.id} value={c.id}>{dn(c.name, c.nameAr)}</SelectItem>
             ))}
@@ -142,16 +147,16 @@ export function MenuItemsPage() {
       {itemsQuery.isLoading ? (
         <TableSkeleton rows={6} cols={5} />
       ) : items.length === 0 ? (
-        <EmptyState icon={UtensilsCrossed} title="No menu items" description="Add items or adjust your search." />
+        <EmptyState icon={UtensilsCrossed} title={t('menu.emptyTitle')} description={t('menu.emptyDesc')} />
       ) : (
         <Table>
           <THead>
             <TR>
-              <TH>Item</TH>
-              <TH>Category</TH>
-              <TH>Price</TH>
-              <TH>Availability</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>{t('common.item')}</TH>
+              <TH>{t('common.category')}</TH>
+              <TH>{t('common.price')}</TH>
+              <TH>{t('menu.availability')}</TH>
+              <TH className="text-end">{t('common.actions')}</TH>
             </TR>
           </THead>
           <TBody>
@@ -172,7 +177,7 @@ export function MenuItemsPage() {
                         <div className="font-medium text-foreground">{item.name}</div>
                         {item.nameAr && <div dir="rtl" className="text-xs text-muted-foreground">{item.nameAr}</div>}
                         {item.preparationTimeMinutes ? (
-                          <div className="text-xs text-muted-foreground">{item.preparationTimeMinutes} min</div>
+                          <div className="text-xs text-muted-foreground">{t('shell.minutesShort', { n: item.preparationTimeMinutes })}</div>
                         ) : null}
                       </div>
                     </div>
@@ -182,19 +187,19 @@ export function MenuItemsPage() {
                   <TD>
                     <Select value={av} onValueChange={(v) => availMut.mutate({ id: item.id, status: v as Availability })}>
                       <SelectTrigger className="h-8 w-36">
-                        <Badge variant={AVAIL_BADGE[av].variant}>{AVAIL_BADGE[av].label}</Badge>
+                        <Badge variant={AVAIL_BADGE[av].variant}>{t(AVAIL_BADGE[av].label)}</Badge>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AVAILABLE">Available</SelectItem>
-                        <SelectItem value="OUT_OF_STOCK">Out of stock</SelectItem>
-                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="AVAILABLE">{t('menu.availAvailable')}</SelectItem>
+                        <SelectItem value="OUT_OF_STOCK">{t('menu.availOutOfStock')}</SelectItem>
+                        <SelectItem value="INACTIVE">{t('common.inactive')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </TD>
-                  <TD className="text-right">
+                  <TD className="text-end">
                     <div className="flex items-center justify-end gap-1">
                       <label className="inline-flex cursor-pointer">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" title="Upload image">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" title={t('menu.uploadImage')}>
                           <ImagePlus className="h-4 w-4" />
                         </span>
                         <input
@@ -235,9 +240,9 @@ export function MenuItemsPage() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${deleting?.name}?`}
-        description="This menu item will be removed."
-        confirmLabel="Delete"
+        title={t('menu.deleteTitle', { name: deleting ? dn(deleting.name, deleting.nameAr) : '' })}
+        description={t('menu.deleteDesc')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleteMut.isPending}
         onConfirm={() => { if (deleting) deleteMut.mutate(deleting.id); }}
@@ -256,11 +261,12 @@ function ItemForm({
 }: {
   open: boolean;
   editing: MenuItem | null;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; nameAr?: string | null }[];
   pending: boolean;
   onOpenChange: (o: boolean) => void;
   onSubmit: (v: MenuItemInput) => void;
 }) {
+  const { t, dn } = useLang();
   const { register, handleSubmit, setValue, watch } = useForm<FormValues>({
     defaultValues: {
       name: editing?.name ?? '',
@@ -277,7 +283,7 @@ function ItemForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Item' : 'Add Menu Item'}</DialogTitle>
+          <DialogTitle>{editing ? t('menu.editItem') : t('menu.addMenuItem')}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit((v) =>
@@ -294,45 +300,45 @@ function ItemForm({
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="name">Name (English)</Label>
-              <Input id="name" placeholder="e.g. Mandi Rice" {...register('name', { required: true })} />
+              <Label htmlFor="name">{t('common.nameEn')}</Label>
+              <Input id="name" placeholder={t('menu.namePlaceholder')} {...register('name', { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nameAr">Name (Arabic)</Label>
+              <Label htmlFor="nameAr">{t('common.nameAr')}</Label>
               <Input id="nameAr" dir="rtl" placeholder="رز مندي" {...register('nameAr')} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{t('common.category')}</Label>
               <Select value={categoryId} onValueChange={(v) => setValue('categoryId', v, { shouldValidate: true })}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('menu.selectCategory')} /></SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{dn(c.name, c.nameAr)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <input type="hidden" {...register('categoryId', { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="price">Price</Label>
-              <Input id="price" type="number" step="0.01" {...register('price', { required: true, valueAsNumber: true })} />
+              <Label htmlFor="price">{t('common.price')}</Label>
+              <Input id="price" dir="ltr" type="number" step="0.01" {...register('price', { required: true, valueAsNumber: true })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="prep">Prep time (min)</Label>
+              <Label htmlFor="prep">{t('menu.prepTime')}</Label>
               <Input id="prep" type="number" {...register('preparationTimeMinutes', { valueAsNumber: true })} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="desc">Description (optional)</Label>
+            <Label htmlFor="desc">{t('menu.descriptionOptional')}</Label>
             <Input id="desc" {...register('description')} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending || !categoryId}>{pending ? 'Saving…' : editing ? 'Save' : 'Add'}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending || !categoryId}>{pending ? t('common.saving') : editing ? t('common.save') : t('common.add')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

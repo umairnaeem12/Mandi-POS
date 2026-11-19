@@ -8,6 +8,7 @@ All commands run from the repo root (npm workspaces) unless noted.
 
 ```bash
 npm install                 # install all workspaces
+cp backend/.env.example backend/.env   # first run only; set DATABASE_URL and secrets
 npm run dev:backend         # NestJS on http://localhost:4000/api (watch)
 npm run dev:web             # Vite on http://localhost:5173 (host: true — LAN accessible)
 npm run build:backend       # nest build
@@ -90,7 +91,14 @@ imports `@pos/*` today: backend and frontend each keep their own types
 The frontend mirrors this with `<ProtectedRoute permission="...">` in
 [App.tsx](apps/pos-web/src/App.tsx) and `useAuthStore().hasPermission()`. UI gating is
 cosmetic; the backend guard is the real check. Permissions are plain `string`s on the
-frontend, so a typo in a permission name compiles and silently denies access.
+frontend, so a typo in a permission name compiles and silently denies access. A new page
+usually needs its permission in three places: the route in `App.tsx`, the sidebar entry's
+`perm` in [nav.ts](apps/pos-web/src/lib/nav.ts), and possibly the post-login order in
+`landing.ts`.
+
+Access and refresh tokens live in `localStorage` ([tokenStorage.ts](apps/pos-web/src/lib/tokenStorage.ts)).
+On a 401, `axios.ts` runs a single shared `POST /auth/refresh` and retries the request once;
+the login and refresh routes are excluded from that retry.
 
 If a login succeeds but bounces back to `/login`, suspect a role with no `RolePermission`
 rows: `/auth/me` returns `permissions: []` and `landingPath()` in
@@ -172,6 +180,22 @@ format via `apps/pos-web/src/lib/format.ts`.
 Menu items and categories carry optional Arabic names alongside English. Resolve display
 names through `useLang().dn(en, ar)` / `pickName` from
 [lang.store.ts](apps/pos-web/src/stores/lang.store.ts) instead of reading `.name` directly.
+
+The whole UI is bilingual (English / Arabic) and flips to right-to-left in Arabic:
+
+- UI strings live in [i18n/ns/](apps/pos-web/src/i18n/ns/), one namespace file per area, each
+  entry holding `{ en, ar }` side by side. Render them with `useLang().t('ns.key')`; keys are typed,
+  so a missing key or translation fails `tsc`. A new namespace must be registered in
+  [i18n/index.ts](apps/pos-web/src/i18n/index.ts). Outside render (toasts in mutation callbacks),
+  use the non-hook `t` exported from `lang.store.ts`.
+- Backend enum values (statuses, payment methods, units) and the six seeded role names go
+  through `tEnum(group, value)`, which passes unknown values through unchanged.
+- `setLang` sets `dir`/`lang` on `<html>`, and `main.tsx` wraps the app in Radix's
+  `DirectionProvider`. Use logical Tailwind classes (`ms-`, `pe-`, `start-`, `text-end`), not
+  `ml-`/`right-`/`text-left`, and add `rtl:-scale-x-100` to back/forward arrow icons.
+- Arabic keeps Western digits: `format.ts` formats with the `ar-u-nu-latn` locale.
+- Server data and server error messages are not translated. `Receipt.tsx` is pinned to
+  `dir="ltr"` and keeps its fixed bilingual layout whatever the UI language.
 
 ### Uploads
 

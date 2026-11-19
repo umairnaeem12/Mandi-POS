@@ -16,6 +16,7 @@ import {
 import { Clock } from '@/components/Clock';
 import { LangToggle } from '@/components/LangToggle';
 import { NotificationBell } from '@/components/NotificationBell';
+import { useLang } from '@/stores/lang.store';
 
 interface TopbarProps {
   title: string;
@@ -27,6 +28,7 @@ interface TopbarProps {
 export function Topbar({ title, collapsed, onToggleCollapse, onOpenMobile }: TopbarProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { t, tEnum } = useLang();
 
   const handleLogout = async () => {
     await logout();
@@ -37,35 +39,41 @@ export function Topbar({ title, collapsed, onToggleCollapse, onOpenMobile }: Top
     <header className="sticky top-0 z-30 flex min-h-[4rem] items-center gap-3 border-b bg-card/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6">
       <button
         onClick={onOpenMobile}
+        aria-label={t('shell.openMenu')}
         className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>
       <button
         onClick={onToggleCollapse}
+        aria-label={t('shell.toggleSidebar')}
         className="hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:flex"
       >
-        {collapsed ? <PanelLeft className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+        {collapsed ? (
+          <PanelLeft className="h-5 w-5 rtl:-scale-x-100" />
+        ) : (
+          <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
+        )}
       </button>
 
       <h1 className="truncate text-lg font-semibold text-foreground">{title}</h1>
 
-      <div className="ml-auto flex items-center gap-2 md:gap-3">
+      <div className="ms-auto flex items-center gap-2 md:gap-3">
         <Clock />
         <LangToggle />
         <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-md p-1 pr-2 transition-colors hover:bg-accent">
+            <button className="flex items-center gap-2 rounded-md p-1 pe-2 transition-colors hover:bg-accent">
               <Avatar>
                 <AvatarFallback>{initials(user?.fullName)}</AvatarFallback>
               </Avatar>
-              <div className="hidden text-left sm:block">
+              <div className="hidden text-start sm:block">
                 <div className="max-w-[140px] truncate text-sm font-medium leading-tight text-foreground">
                   {user?.fullName}
                 </div>
-                <div className="text-[11px] text-muted-foreground">{user?.roleName}</div>
+                <div className="text-[11px] text-muted-foreground">{tEnum('role', user?.roleName)}</div>
               </div>
             </button>
           </DropdownMenuTrigger>
@@ -75,14 +83,14 @@ export function Topbar({ title, collapsed, onToggleCollapse, onOpenMobile }: Top
                 <span className="text-sm font-medium">{user?.fullName}</span>
                 <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
                 <Badge variant="default" className={cn('mt-1.5 w-fit')}>
-                  {user?.roleName}
+                  {tEnum('role', user?.roleName)}
                 </Badge>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" />
-              Logout
+              {t('shell.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

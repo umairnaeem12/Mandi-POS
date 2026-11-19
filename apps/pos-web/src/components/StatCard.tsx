@@ -68,7 +68,11 @@ export function StatCard({
               trendUp ? 'text-success' : 'text-destructive',
             )}
           >
-            {trendUp ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+            {trendUp ? (
+              <ArrowUpRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+            ) : (
+              <ArrowDownRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+            )}
             {Math.abs(trend.value)}%
           </span>
           {trend.label && <span className="text-muted-foreground">{trend.label}</span>}

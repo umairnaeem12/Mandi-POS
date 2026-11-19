@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
+import { useLang } from '@/stores/lang.store';
 
 interface Props {
   children: ReactNode;
@@ -10,10 +11,11 @@ interface Props {
 export function ProtectedRoute({ children, permission }: Props) {
   const location = useLocation();
   const { status, hasPermission } = useAuthStore();
+  const { t } = useLang();
 
   if (status === 'idle' || status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center text-slate-500">Loading…</div>
+      <div className="flex min-h-screen items-center justify-center text-slate-500">{t('common.loading')}</div>
     );
   }
 
@@ -24,8 +26,8 @@ export function ProtectedRoute({ children, permission }: Props) {
   if (permission && !hasPermission(permission)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 text-slate-600">
-        <h2 className="text-xl font-semibold">Access denied</h2>
-        <p className="text-sm text-slate-400">You don't have permission to view this page.</p>
+        <h2 className="text-xl font-semibold">{t('shell.accessDenied')}</h2>
+        <p className="text-sm text-slate-400">{t('shell.noPermission')}</p>
       </div>
     );
   }

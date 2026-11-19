@@ -1,0 +1,27 @@
+import type { Namespace } from '../entry';
+
+export const menu = {
+  title: { en: 'Menu Items', ar: 'أصناف القائمة' },
+  subtitle: { en: 'Manage the items customers can order.', ar: 'إدارة الأصناف التي يمكن للعملاء طلبها.' },
+  addItem: { en: 'Add Item', ar: 'إضافة صنف' },
+  searchItems: { en: 'Search items…', ar: 'ابحث عن صنف…' },
+  allCategories: { en: 'All categories', ar: 'كل الفئات' },
+  emptyTitle: { en: 'No menu items', ar: 'لا توجد أصناف' },
+  emptyDesc: { en: 'Add items or adjust your search.', ar: 'أضف أصنافاً أو عدّل البحث.' },
+  availability: { en: 'Availability', ar: 'التوفر' },
+  availAvailable: { en: 'Available', ar: 'متوفر' },
+  availOutOfStock: { en: 'Out of stock', ar: 'نفد من المخزون' },
+  uploadImage: { en: 'Upload image', ar: 'رفع صورة' },
+  editItem: { en: 'Edit Item', ar: 'تعديل الصنف' },
+  addMenuItem: { en: 'Add Menu Item', ar: 'إضافة صنف إلى القائمة' },
+  namePlaceholder: { en: 'e.g. Mandi Rice', ar: 'مثال: Mandi Rice' },
+  selectCategory: { en: 'Select…', ar: 'اختر…' },
+  prepTime: { en: 'Prep time (min)', ar: 'مدة التحضير (دقيقة)' },
+  descriptionOptional: { en: 'Description (optional)', ar: 'الوصف (اختياري)' },
+  itemAdded: { en: 'Item added', ar: 'تمت إضافة الصنف' },
+  itemUpdated: { en: 'Item updated', ar: 'تم تحديث الصنف' },
+  imageUpdated: { en: 'Image updated', ar: 'تم تحديث الصورة' },
+  itemDeleted: { en: 'Item deleted', ar: 'تم حذف الصنف' },
+  deleteTitle: { en: 'Delete {name}?', ar: 'حذف {name}؟' },
+  deleteDesc: { en: 'This menu item will be removed.', ar: 'سيتم حذف هذا الصنف من القائمة.' },
+} satisfies Namespace;

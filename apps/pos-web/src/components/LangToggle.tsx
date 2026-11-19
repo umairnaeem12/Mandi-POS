@@ -7,14 +7,21 @@ export function LangToggle() {
   const setLang = useLangStore((s) => s.setLang);
 
   return (
-    <div className="flex items-center rounded-md border bg-card p-0.5 text-xs font-semibold">
+    <div
+      role="group"
+      aria-label="Language / اللغة"
+      className="flex items-center rounded-md border bg-card p-0.5 text-xs font-semibold">
       <button
+        lang="en"
+        aria-pressed={lang === 'en'}
         onClick={() => setLang('en')}
         className={cn('rounded px-2 py-1 transition-colors', lang === 'en' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
       >
         EN
       </button>
       <button
+        lang="ar"
+        aria-pressed={lang === 'ar'}
         onClick={() => setLang('ar')}
         className={cn('rounded px-2 py-1 transition-colors', lang === 'ar' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
       >

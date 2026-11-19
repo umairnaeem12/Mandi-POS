@@ -1,0 +1,37 @@
+import type { Namespace } from '../entry';
+
+export const billing = {
+  title: { en: 'Billing', ar: 'الفوترة' },
+  backToOrders: { en: 'Back to orders', ar: 'العودة إلى الطلبات' },
+  orderNotFound: { en: 'Order not found.', ar: 'الطلب غير موجود.' },
+  orderItems: { en: 'Order Items', ar: 'أصناف الطلب' },
+  customerDiscount: { en: 'Customer & Discount', ar: 'العميل والخصم' },
+  customerName: { en: 'Customer name', ar: 'اسم العميل' },
+  contact: { en: 'Contact', ar: 'رقم التواصل' },
+  noDiscount: { en: 'No discount', ar: 'بدون خصم' },
+  percentage: { en: 'Percentage %', ar: 'نسبة مئوية %' },
+  value: { en: 'Value', ar: 'القيمة' },
+  generating: { en: 'Generating…', ar: 'جارٍ الإنشاء…' },
+  generateInvoice: { en: 'Generate Invoice', ar: 'إنشاء الفاتورة' },
+  receivePayment: { en: 'Receive Payment', ar: 'استلام الدفعة' },
+  grandTotal: { en: 'Grand total', ar: 'الإجمالي الكلي' },
+  alreadyPaid: { en: 'Already paid', ar: 'المدفوع مسبقاً' },
+  due: { en: 'Due', ar: 'المستحق' },
+  amountReceived: { en: 'Amount received', ar: 'المبلغ المستلم' },
+  changeToReturn: { en: 'Change to return:', ar: 'الباقي للعميل:' },
+  processing: { en: 'Processing…', ar: 'جارٍ المعالجة…' },
+  paymentComplete: { en: 'Payment complete', ar: 'اكتمل الدفع' },
+  changeReturned: { en: 'Change returned: {amount}', ar: 'الباقي المُعاد: {amount}' },
+  printReceipt: { en: 'Print Receipt', ar: 'طباعة الإيصال' },
+  done: { en: 'Done', ar: 'تم' },
+  previewHint: {
+    en: 'Receipt preview appears after generating the invoice.',
+    ar: 'تظهر معاينة الإيصال بعد إنشاء الفاتورة.',
+  },
+  invoiceGenerated: { en: 'Invoice generated', ar: 'تم إنشاء الفاتورة' },
+  paymentReceived: {
+    en: 'Payment received, order completed',
+    ar: 'تم استلام الدفعة واكتمل الطلب',
+  },
+  partialPayment: { en: 'Partial payment recorded', ar: 'تم تسجيل دفعة جزئية' },
+} satisfies Namespace;

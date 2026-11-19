@@ -45,7 +45,9 @@ export function Receipt({ invoice, paper = '80mm' }: { invoice: Invoice; paper?:
     .filter(Boolean);
 
   return (
+    // Printed bill keeps its own fixed layout whatever the UI language is.
     <div
+      dir="ltr"
       data-paper={paper}
       className={cn('receipt mx-auto bg-white leading-relaxed text-black', PAPER_STYLE[paper])}
     >

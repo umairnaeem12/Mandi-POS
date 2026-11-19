@@ -19,7 +19,7 @@ import { ordersApi } from '@/api/orders';
 import { categoriesApi } from '@/api/categories';
 import { menuItemsApi, type MenuItem } from '@/api/menuItems';
 import { useAuthStore } from '@/stores/auth.store';
-import { useLang } from '@/stores/lang.store';
+import { t as tNow, useLang } from '@/stores/lang.store';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { assetUrl } from '@/lib/assets';
 import { formatMoney } from '@/lib/format';
@@ -53,7 +53,7 @@ export function OrderPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { currency } = useRestaurant();
-  const { dn } = useLang();
+  const { dn, t, tEnum } = useLang();
   const canBill = useAuthStore((s) => s.hasPermission('generate_invoice'));
   const money = (v: number | string) => formatMoney(v, currency);
 
@@ -78,7 +78,7 @@ export function OrderPage() {
 
   const onError = (e: unknown) =>
     toast.error(
-      e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Action failed') : 'Action failed',
+      e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? tNow('orders.actionFailed')) : tNow('orders.actionFailed'),
     );
 
   const createMut = useMutation({
@@ -90,7 +90,7 @@ export function OrderPage() {
       }),
     onSuccess: () => {
       setCart([]);
-      toast.success('Order sent to kitchen');
+      toast.success(tNow('pos.sentToKitchen'));
       refreshOrder();
     },
     onError,
@@ -120,7 +120,9 @@ export function OrderPage() {
       sellable.filter(
         (m) =>
           (!activeCat || m.categoryId === activeCat) &&
-          (!search || m.name.toLowerCase().includes(search.toLowerCase())),
+          (!search ||
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            !!m.nameAr?.includes(search)),
       ),
     [sellable, activeCat, search],
   );
@@ -162,7 +164,7 @@ export function OrderPage() {
     <div className="grid h-[calc(100vh-7rem)] gap-4 lg:grid-cols-[190px_1fr_350px]">
       {/* Category panel */}
       <aside className="hidden flex-col gap-1.5 overflow-y-auto scrollbar-thin lg:flex">
-        <CategoryButton active={!activeCat} onClick={() => setActiveCat('')} label={dn('All Items', 'الكل')} count={sellable.length} />
+        <CategoryButton active={!activeCat} onClick={() => setActiveCat('')} label={t('pos.allItems')} count={sellable.length} />
         {catsQuery.data?.map((c) => (
           <CategoryButton
             key={c.id}
@@ -177,16 +179,16 @@ export function OrderPage() {
       {/* Menu */}
       <div className="flex min-h-0 flex-col gap-3">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate('/waiter/tables')} className="shrink-0 lg:hidden">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="outline" size="icon" onClick={() => navigate('/waiter/tables')} className="shrink-0 lg:hidden" aria-label={t('common.back')}>
+            <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" />
           </Button>
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search menu items…"
-              className="pl-9"
+              placeholder={t('pos.searchMenu')}
+              className="ps-9"
             />
           </div>
           {/* mobile category select */}
@@ -195,23 +197,23 @@ export function OrderPage() {
             onChange={(e) => setActiveCat(e.target.value)}
             className="h-10 rounded-md border border-input bg-card px-2 text-sm lg:hidden"
           >
-            <option value="">All</option>
+            <option value="">{t('common.all')}</option>
             {catsQuery.data?.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {dn(c.name, c.nameAr)}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pe-1">
           {itemsQuery.isLoading ? (
             <CardGridSkeleton count={9} />
           ) : visibleItems.length === 0 ? (
             <EmptyState
               icon={UtensilsCrossed}
-              title="No menu items found"
-              description="Try another category or search term."
+              title={t('pos.noMenuItems')}
+              description={t('pos.noMenuItemsHint')}
             />
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -221,7 +223,7 @@ export function OrderPage() {
                   onClick={() => onPickItem(m)}
                   disabled={m.isOutOfStock}
                   className={cn(
-                    'group relative flex flex-col overflow-hidden rounded-lg border bg-card text-left shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover',
+                    'group relative flex flex-col overflow-hidden rounded-lg border bg-card text-start shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover',
                     m.isOutOfStock && 'cursor-not-allowed opacity-60',
                   )}
                 >
@@ -233,11 +235,11 @@ export function OrderPage() {
                     )}
                     {m.isOutOfStock && (
                       <span className="absolute inset-0 flex items-center justify-center bg-card/70 text-xs font-semibold uppercase tracking-wide text-destructive">
-                        Out of stock
+                        {t('pos.outOfStock')}
                       </span>
                     )}
                     {!m.isOutOfStock && (
-                      <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                      <span className="absolute bottom-1.5 end-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100">
                         <Plus className="h-4 w-4" />
                       </span>
                     )}
@@ -247,7 +249,7 @@ export function OrderPage() {
                     <div className="mt-auto flex items-center justify-between pt-2">
                       <span className="text-sm font-bold text-primary">{money(m.price)}</span>
                       {m.preparationTimeMinutes ? (
-                        <span className="text-[11px] text-muted-foreground">{m.preparationTimeMinutes}m</span>
+                        <span className="text-[11px] text-muted-foreground">{t('shell.minutesShort', { n: m.preparationTimeMinutes })}</span>
                       ) : null}
                     </div>
                   </div>
@@ -264,18 +266,18 @@ export function OrderPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-primary" />
-              <span className="font-semibold">{tableQuery.data?.name ?? 'Table'}</span>
+              <span className="font-semibold">{tableQuery.data?.name ?? t('common.table')}</span>
             </div>
             {activeOrder ? (
-              <Badge variant={statusVariant(activeOrder.status)}>{activeOrder.status}</Badge>
+              <Badge variant={statusVariant(activeOrder.status)}>{tEnum('orderStatus', activeOrder.status)}</Badge>
             ) : (
-              <Badge variant="secondary">New</Badge>
+              <Badge variant="secondary">{t('pos.newOrder')}</Badge>
             )}
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="px-2 py-0">Dine In</Badge>
+            <Badge variant="outline" className="px-2 py-0">{tEnum('orderType', 'DINE_IN')}</Badge>
             {activeOrder && <span>{activeOrder.orderNumber}</span>}
-            <span>· {cartCount} item{cartCount === 1 ? '' : 's'}</span>
+            <span>· {t('orders.itemCount', { n: cartCount })}</span>
           </div>
         </div>
 
@@ -329,28 +331,28 @@ export function OrderPage() {
         <div className="border-t p-4">
           {activeOrder ? (
             <div className="space-y-1.5 text-sm">
-              <Row label="Subtotal" value={money(activeOrder.subtotal)} />
+              <Row label={t('common.subtotal')} value={money(activeOrder.subtotal)} />
               {Number(activeOrder.discountAmount) > 0 && (
-                <Row label="Discount" value={`- ${money(activeOrder.discountAmount)}`} />
+                <Row label={t('common.discount')} value={`- ${money(activeOrder.discountAmount)}`} />
               )}
-              {Number(activeOrder.taxAmount) > 0 && <Row label="Tax" value={money(activeOrder.taxAmount)} />}
+              {Number(activeOrder.taxAmount) > 0 && <Row label={t('common.tax')} value={money(activeOrder.taxAmount)} />}
               <div className="flex items-center justify-between border-t pt-2 text-base font-bold">
-                <span>Total</span>
+                <span>{t('common.total')}</span>
                 <span className="text-primary">{money(activeOrder.grandTotal)}</span>
               </div>
               <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-                <ChefHat className="h-3.5 w-3.5" /> Sent to kitchen — tap items to add more.
+                <ChefHat className="h-3.5 w-3.5" /> {t('pos.sentHint')}
               </p>
               {canBill && (
                 <Button className="mt-2 w-full" onClick={() => navigate(`/admin/billing/${activeOrder.id}`)}>
-                  <Receipt className="h-4 w-4" /> Generate Bill
+                  <Receipt className="h-4 w-4" /> {t('orders.generateBill')}
                 </Button>
               )}
             </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-base font-bold">
-                <span>Total</span>
+                <span>{t('common.total')}</span>
                 <span className="text-primary">{money(cartTotal)}</span>
               </div>
               <Button
@@ -360,7 +362,7 @@ export function OrderPage() {
                 onClick={() => createMut.mutate()}
               >
                 <ChefHat className="h-4 w-4" />
-                {createMut.isPending ? 'Sending…' : 'Send to Kitchen'}
+                {createMut.isPending ? t('pos.sending') : t('pos.sendToKitchen')}
               </Button>
             </div>
           )}
@@ -371,19 +373,19 @@ export function OrderPage() {
       <Dialog open={!!noteTarget} onOpenChange={(o) => !o && setNoteTarget(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Note for {noteTarget?.name}</DialogTitle>
+            <DialogTitle>{t('pos.noteFor', { name: noteTarget?.name ?? '' })}</DialogTitle>
           </DialogHeader>
           <Textarea
             autoFocus
             value={noteTarget?.notes ?? ''}
-            onChange={(e) => setNoteTarget((t) => (t ? { ...t, notes: e.target.value } : t))}
-            placeholder="e.g. No mayo, extra spicy…"
+            onChange={(e) => setNoteTarget((prev) => (prev ? { ...prev, notes: e.target.value } : prev))}
+            placeholder={t('pos.notePlaceholder')}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setNoteTarget(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
-            <Button onClick={saveNote}>Save note</Button>
+            <Button onClick={saveNote}>{t('pos.saveNote')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -406,7 +408,7 @@ function CategoryButton({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors',
+        'flex items-center justify-between rounded-lg border px-3 py-2.5 text-start text-sm font-medium transition-colors',
         active
           ? 'border-primary bg-primary text-primary-foreground shadow-sm'
           : 'border-transparent bg-card text-foreground hover:bg-accent',
@@ -415,7 +417,7 @@ function CategoryButton({
       <span className="truncate">{label}</span>
       <span
         className={cn(
-          'ml-2 rounded-full px-1.5 text-xs',
+          'ms-2 rounded-full px-1.5 text-xs',
           active ? 'bg-white/20' : 'bg-muted text-muted-foreground',
         )}
       >
@@ -446,16 +448,17 @@ function CartRow({
   onRemove: () => void;
   onNote: () => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="rounded-lg p-2 transition-colors hover:bg-accent/60">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground">{name}</div>
-          <div className="text-xs text-muted-foreground">{money(unitPrice)} each</div>
+          <div className="text-xs text-muted-foreground">{t('pos.each', { price: money(unitPrice) })}</div>
         </div>
         <div className="text-sm font-semibold text-foreground">{money(unitPrice * quantity)}</div>
       </div>
-      {notes && <div className="mt-1 text-[11px] italic text-warning-foreground">↳ {notes}</div>}
+      {notes && <div className="mt-1 text-[11px] italic text-warning-foreground"><span className="inline-block rtl:-scale-x-100">↳</span> {notes}</div>}
       <div className="mt-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" onClick={onDec}>
@@ -467,10 +470,10 @@ function CartRow({
           </Button>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={onNote} title="Add note">
+          <Button variant="ghost" size="icon-sm" onClick={onNote} title={t('pos.addNote')}>
             <StickyNote className={cn('h-3.5 w-3.5', notes && 'text-primary')} />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={onRemove} className="text-destructive hover:text-destructive">
+          <Button variant="ghost" size="icon-sm" onClick={onRemove} className="text-destructive hover:text-destructive" title={t('pos.removeItem')}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -480,13 +483,14 @@ function CartRow({
 }
 
 function EmptyCart() {
+  const { t } = useLang();
   return (
     <div className="flex h-full flex-col items-center justify-center px-4 py-10 text-center">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
         <ShoppingCart className="h-6 w-6 text-muted-foreground" />
       </div>
-      <p className="text-sm font-medium text-foreground">No items yet</p>
-      <p className="text-xs text-muted-foreground">Tap menu items to build this order.</p>
+      <p className="text-sm font-medium text-foreground">{t('pos.emptyCartTitle')}</p>
+      <p className="text-xs text-muted-foreground">{t('pos.emptyCartHint')}</p>
     </div>
   );
 }

@@ -1,25 +1,30 @@
+import { intlLocale } from '@/i18n';
+import { t, useLangStore } from '@/stores/lang.store';
+
 // Shared formatting helpers. The currency symbol comes from restaurant settings;
 // callers that don't have it fall back to "Rs".
+
+const loc = () => intlLocale(useLangStore.getState().lang);
 
 export function formatMoney(value: number | string | null | undefined, symbol = 'Rs'): string {
   const n = typeof value === 'string' ? Number(value) : (value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
-  return `${symbol} ${safe.toLocaleString(undefined, {
+  return `${symbol} ${safe.toLocaleString(loc(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
 
 export function formatNumber(value: number | null | undefined): string {
-  return (value ?? 0).toLocaleString();
+  return (value ?? 0).toLocaleString(loc());
 }
 
 export function formatTime(date: string | Date): string {
-  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(date).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' });
 }
 
 export function formatDateTime(date: string | Date): string {
-  return new Date(date).toLocaleString([], {
+  return new Date(date).toLocaleString(loc(), {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -28,19 +33,19 @@ export function formatDateTime(date: string | Date): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(date).toLocaleDateString(loc(), { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // "12 min ago" style relative time, kept short for cards.
 export function timeAgo(date: string | Date): string {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return t('shell.justNow');
+  if (mins < 60) return t('shell.minAgo', { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('shell.hoursAgo', { n: hrs });
   const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return t('shell.daysAgo', { n: days });
 }
 
 // Minutes elapsed since a timestamp — for kitchen/table "running" timers.

@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Printer, Receipt as ReceiptIcon } from 'lucide
 import { ordersApi } from '@/api/orders';
 import { invoicesApi, type DiscountType, type Invoice, type PaymentMethod } from '@/api/invoices';
 import { useRestaurant } from '@/hooks/useRestaurant';
-import { useLang } from '@/stores/lang.store';
+import { t as tNow, useLang } from '@/stores/lang.store';
 import { formatMoney } from '@/lib/format';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +30,7 @@ export function BillingPage() {
   const { orderId = '' } = useParams();
   const navigate = useNavigate();
   const { currency } = useRestaurant();
-  const { dn } = useLang();
+  const { dn, t, tEnum } = useLang();
   const money = (v: string | number) => formatMoney(v, currency);
   const [paper, setPaper] = usePaperSize();
   const { printReceipt, printPortal } = useReceiptPrint();
@@ -47,7 +47,9 @@ export function BillingPage() {
 
   const onError = (e: unknown) =>
     toast.error(
-      e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed',
+      e instanceof AxiosError
+        ? ((e.response?.data as { message?: string })?.message ?? tNow('common.somethingWentWrong'))
+        : tNow('common.somethingWentWrong'),
     );
 
   const genMut = useMutation({
@@ -61,7 +63,7 @@ export function BillingPage() {
     onSuccess: (inv) => {
       setInvoice(inv);
       setAmount(inv.grandTotal);
-      toast.success('Invoice generated');
+      toast.success(tNow('billing.invoiceGenerated'));
     },
     onError,
   });
@@ -70,8 +72,8 @@ export function BillingPage() {
     mutationFn: () => invoicesApi.pay(invoice!.id, { paymentMethod: method, amount: Number(amount) }),
     onSuccess: (inv) => {
       setInvoice(inv);
-      if (inv.paymentStatus === 'PAID') toast.success('Payment received — order completed');
-      else toast.success('Partial payment recorded');
+      if (inv.paymentStatus === 'PAID') toast.success(tNow('billing.paymentReceived'));
+      else toast.success(tNow('billing.partialPayment'));
     },
     onError,
   });
@@ -90,18 +92,24 @@ export function BillingPage() {
       </div>
     );
   }
-  if (!order) return <p className="text-destructive">Order not found.</p>;
+  if (!order) return <p className="text-destructive">{t('billing.orderNotFound')}</p>;
 
   return (
     <div className="space-y-5">
       {printPortal}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => navigate('/admin/orders')}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => navigate('/admin/orders')}
+          aria-label={t('billing.backToOrders')}
+          title={t('billing.backToOrders')}
+        >
+          <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
-          <p className="text-sm text-muted-foreground">{order.orderNumber} · {order.table?.name ?? order.orderType}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('billing.title')}</h1>
+          <p className="text-sm text-muted-foreground">{order.orderNumber} · {order.table?.name ?? tEnum('orderType', order.orderType)}</p>
         </div>
       </div>
 
@@ -111,7 +119,7 @@ export function BillingPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ReceiptIcon className="h-4 w-4 text-primary" /> Order Items
+                <ReceiptIcon className="h-4 w-4 text-primary" /> {t('billing.orderItems')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -124,7 +132,7 @@ export function BillingPage() {
                 ))}
               </ul>
               <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
-                <span>Subtotal</span>
+                <span>{t('common.subtotal')}</span>
                 <span>{money(subtotal)}</span>
               </div>
             </CardContent>
@@ -134,36 +142,36 @@ export function BillingPage() {
           {!invoice && (
             <Card>
               <CardHeader>
-                <CardTitle>Customer & Discount</CardTitle>
+                <CardTitle>{t('billing.customerDiscount')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Customer name</Label>
-                    <Input placeholder="Optional" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                    <Label>{t('billing.customerName')}</Label>
+                    <Input placeholder={t('common.optional')} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Contact</Label>
-                    <Input placeholder="Optional" value={customerContact} onChange={(e) => setCustomerContact(e.target.value)} />
+                    <Label>{t('billing.contact')}</Label>
+                    <Input placeholder={t('common.optional')} value={customerContact} onChange={(e) => setCustomerContact(e.target.value)} />
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Discount</Label>
+                    <Label>{t('common.discount')}</Label>
                     <Select value={discountType} onValueChange={(v) => setDiscountType(v as DiscountType | 'NONE')}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="NONE">No discount</SelectItem>
-                        <SelectItem value="PERCENTAGE">Percentage %</SelectItem>
-                        <SelectItem value="FIXED">Fixed amount</SelectItem>
+                        <SelectItem value="NONE">{t('billing.noDiscount')}</SelectItem>
+                        <SelectItem value="PERCENTAGE">{t('billing.percentage')}</SelectItem>
+                        <SelectItem value="FIXED">{tEnum('discountType', 'FIXED')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   {discountType !== 'NONE' && (
                     <div className="space-y-1.5">
-                      <Label>Value</Label>
+                      <Label>{t('billing.value')}</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -174,7 +182,7 @@ export function BillingPage() {
                   )}
                 </div>
                 <Button className="w-full" disabled={genMut.isPending} onClick={() => genMut.mutate()}>
-                  {genMut.isPending ? 'Generating…' : 'Generate Invoice'}
+                  {genMut.isPending ? t('billing.generating') : t('billing.generateInvoice')}
                 </Button>
               </CardContent>
             </Card>
@@ -184,34 +192,34 @@ export function BillingPage() {
           {invoice && !isPaid && (
             <Card>
               <CardHeader>
-                <CardTitle>Receive Payment</CardTitle>
+                <CardTitle>{t('billing.receivePayment')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5 rounded-lg bg-muted/40 p-3 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Grand total</span><span className="font-semibold">{money(invoice.grandTotal)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Already paid</span><span>{money(invoice.paidAmount)}</span></div>
-                  <div className="flex justify-between border-t pt-1.5 font-medium"><span>Due</span><span className="text-primary">{money(due)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t('billing.grandTotal')}</span><span className="font-semibold">{money(invoice.grandTotal)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t('billing.alreadyPaid')}</span><span>{money(invoice.paidAmount)}</span></div>
+                  <div className="flex justify-between border-t pt-1.5 font-medium"><span>{t('billing.due')}</span><span className="text-primary">{money(due)}</span></div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Payment method</Label>
+                  <Label>{t('common.paymentMethod')}</Label>
                   <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {METHODS.map((m) => (
-                        <SelectItem key={m} value={m}>{m.replace('_', ' ')}</SelectItem>
+                        <SelectItem key={m} value={m}>{tEnum('paymentMethod', m)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Amount received</Label>
+                  <Label>{t('billing.amountReceived')}</Label>
                   <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
                 </div>
                 {change > 0 && (
-                  <p className="text-sm text-muted-foreground">Change to return: <span className="font-semibold text-foreground">{money(change)}</span></p>
+                  <p className="text-sm text-muted-foreground">{t('billing.changeToReturn')} <span className="font-semibold text-foreground">{money(change)}</span></p>
                 )}
                 <Button className="w-full" disabled={payMut.isPending || !amount} onClick={() => payMut.mutate()}>
-                  {payMut.isPending ? 'Processing…' : 'Receive Payment'}
+                  {payMut.isPending ? t('billing.processing') : t('billing.receivePayment')}
                 </Button>
               </CardContent>
             </Card>
@@ -221,11 +229,11 @@ export function BillingPage() {
             <Card className="border-success/40 bg-success/5">
               <CardContent className="space-y-3 pt-5">
                 <div className="flex items-center gap-2 font-semibold text-success">
-                  <CheckCircle2 className="h-5 w-5" /> Payment complete
+                  <CheckCircle2 className="h-5 w-5" /> {t('billing.paymentComplete')}
                 </div>
-                <p className="text-sm text-muted-foreground">Change returned: {money(invoice!.changeAmount)}</p>
+                <p className="text-sm text-muted-foreground">{t('billing.changeReturned', { amount: money(invoice!.changeAmount) })}</p>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Paper size</Label>
+                  <Label>{t('shell.paperSize')}</Label>
                   <PaperSizeSelect value={paper} onChange={setPaper} />
                 </div>
                 <div className="flex gap-2">
@@ -236,9 +244,9 @@ export function BillingPage() {
                       printReceipt(invoice!, paper);
                     }}
                   >
-                    <Printer className="h-4 w-4" /> Print Receipt
+                    <Printer className="h-4 w-4" /> {t('billing.printReceipt')}
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/admin/orders')}>Done</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/orders')}>{t('billing.done')}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -253,7 +261,7 @@ export function BillingPage() {
             </div>
           ) : (
             <div className="flex h-full min-h-[300px] items-center justify-center rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-              Receipt preview appears after generating the invoice.
+              {t('billing.previewHint')}
             </div>
           )}
         </div>

@@ -5,7 +5,8 @@ import { CheckCircle2, ChefHat, Clock, Flame, UtensilsCrossed } from 'lucide-rea
 import { kitchenApi } from '@/api/kitchen';
 import type { Order, OrderStatus } from '@/api/orders';
 import { joinRoom, useSocketEvent } from '@/lib/socket';
-import { useLang } from '@/stores/lang.store';
+import type { TKey } from '@/i18n';
+import { t as tNow, useLang } from '@/stores/lang.store';
 import { minutesSince } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
@@ -15,31 +16,31 @@ import { OperationalTopbar } from '@/components/OperationalTopbar';
 type KitchenStatus = 'PENDING' | 'PREPARING' | 'SERVED';
 
 const COLUMNS: {
-  title: string;
+  title: TKey;
   status: KitchenStatus;
   icon: typeof Clock;
   accent: string;
   headBg: string;
-  action?: { label: string; to: 'PREPARING' | 'SERVED' };
+  action?: { label: TKey; to: 'PREPARING' | 'SERVED' };
 }[] = [
   {
-    title: 'New Orders',
+    title: 'kitchen.colNew',
     status: 'PENDING',
     icon: Clock,
     accent: 'text-warning-foreground',
     headBg: 'bg-warning/15',
-    action: { label: 'Start Cooking', to: 'PREPARING' },
+    action: { label: 'kitchen.startCooking', to: 'PREPARING' },
   },
   {
-    title: 'Cooking',
+    title: 'kitchen.colCooking',
     status: 'PREPARING',
     icon: Flame,
     accent: 'text-info',
     headBg: 'bg-info/10',
-    action: { label: 'Mark Ready / Served', to: 'SERVED' },
+    action: { label: 'kitchen.markServed', to: 'SERVED' },
   },
   {
-    title: 'Served',
+    title: 'kitchen.colServed',
     status: 'SERVED',
     icon: CheckCircle2,
     accent: 'text-success',
@@ -49,6 +50,7 @@ const COLUMNS: {
 
 export function KitchenPage() {
   const qc = useQueryClient();
+  const { t } = useLang();
   const { data, isLoading } = useQuery({ queryKey: ['kitchen-orders'], queryFn: kitchenApi.orders });
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function KitchenPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
   useSocketEvent('kitchen.new_order', () => {
-    toast.info('New order received');
+    toast.info(tNow('kitchen.newOrderToast'));
     refresh();
   });
   useSocketEvent('kitchen.order_updated', refresh);
@@ -67,14 +69,14 @@ export function KitchenPage() {
     mutationFn: ({ id, status }: { id: string; status: 'PREPARING' | 'SERVED' }) =>
       kitchenApi.setStatus(id, status),
     onSuccess: refresh,
-    onError: () => toast.error('Could not update order'),
+    onError: () => toast.error(tNow('kitchen.updateFailed')),
   });
 
   const byStatus = (s: OrderStatus) => (data ?? []).filter((o) => o.status === s);
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <OperationalTopbar title="Kitchen Display" />
+      <OperationalTopbar title={t('kitchen.title')} />
       <main className="grid flex-1 grid-cols-1 gap-4 overflow-hidden p-4 md:grid-cols-3">
         {COLUMNS.map((col) => {
           const orders = byStatus(col.status);
@@ -83,7 +85,7 @@ export function KitchenPage() {
               <div className={cn('flex items-center justify-between rounded-t-xl px-4 py-3', col.headBg)}>
                 <div className="flex items-center gap-2">
                   <col.icon className={cn('h-4 w-4', col.accent)} />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide">{col.title}</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide">{t(col.title)}</h2>
                 </div>
                 <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-card px-1.5 text-xs font-bold">
                   {orders.length}
@@ -95,7 +97,7 @@ export function KitchenPage() {
                 {!isLoading && orders.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
                     <UtensilsCrossed className="h-7 w-7 opacity-40" />
-                    <span className="text-sm">No orders</span>
+                    <span className="text-sm">{t('kitchen.noOrders')}</span>
                   </div>
                 )}
                 <AnimatePresence mode="popLayout">
@@ -106,7 +108,7 @@ export function KitchenPage() {
                       action={
                         col.action
                           ? {
-                              label: col.action.label,
+                              label: t(col.action.label),
                               onClick: () => statusMut.mutate({ id: o.id, status: col.action!.to }),
                             }
                           : undefined
@@ -124,7 +126,7 @@ export function KitchenPage() {
 }
 
 function OrderCard({ order, action }: { order: Order; action?: { label: string; onClick: () => void } }) {
-  const { dn } = useLang();
+  const { dn, t, tEnum } = useLang();
   const mins = minutesSince(order.createdAt);
   const urgent = mins >= 15 && order.status !== 'SERVED';
   const itemCount = order.items.reduce((s, i) => s + i.quantity, 0);
@@ -144,7 +146,7 @@ function OrderCard({ order, action }: { order: Order; action?: { label: string; 
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 font-bold text-foreground">
           <ChefHat className="h-4 w-4 text-primary" />
-          {order.table ? order.table.name : 'Takeaway'}
+          {order.table ? order.table.name : tEnum('orderType', order.orderType)}
         </span>
         <span
           className={cn(
@@ -152,11 +154,11 @@ function OrderCard({ order, action }: { order: Order; action?: { label: string; 
             urgent ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground',
           )}
         >
-          <Clock className="h-3 w-3" /> {mins}m
+          <Clock className="h-3 w-3" /> {t('shell.minutesShort', { n: mins })}
         </span>
       </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground">
-        {order.orderNumber} · {itemCount} item{itemCount === 1 ? '' : 's'}
+        {order.orderNumber} · {t('orders.itemCount', { n: itemCount })}
       </div>
 
       <ul className="mt-2.5 space-y-1.5 border-t pt-2.5 text-sm">
@@ -166,7 +168,7 @@ function OrderCard({ order, action }: { order: Order; action?: { label: string; 
               <span className="font-bold text-primary tabular-nums">{i.quantity}×</span>
               <span className="text-foreground">{dn(i.itemName, i.itemNameAr)}</span>
             </div>
-            {i.notes && <div className="ml-6 text-xs italic text-warning-foreground">↳ {i.notes}</div>}
+            {i.notes && <div className="ms-6 text-xs italic text-warning-foreground"><span className="inline-block rtl:-scale-x-100">↳</span> {i.notes}</div>}
           </li>
         ))}
       </ul>

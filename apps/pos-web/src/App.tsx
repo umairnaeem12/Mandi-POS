@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
+import { useLang } from '@/stores/lang.store';
 import { landingPath } from '@/lib/landing';
 import { connectRealtime, disconnectRealtime } from '@/lib/socket';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -218,8 +219,9 @@ export default function App() {
 // Send each user to their role's landing page.
 function RootRedirect() {
   const { status, user } = useAuthStore();
+  const { t } = useLang();
   if (status === 'idle' || status === 'loading') {
-    return <div className="flex min-h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return <div className="flex min-h-screen items-center justify-center text-slate-500">{t('common.loading')}</div>;
   }
   return <Navigate to={status === 'authenticated' ? landingPath(user) : '/login'} replace />;
 }
