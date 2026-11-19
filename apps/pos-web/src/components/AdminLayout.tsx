@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { pageTitleForPath } from '@/lib/nav';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
+import { useLang } from '@/stores/lang.store';
 
 const COLLAPSE_KEY = 'pos.sidebar.collapsed';
 
@@ -19,7 +20,8 @@ export function AdminLayout() {
     });
   };
 
-  const title = pageTitleForPath(location.pathname);
+  const { t } = useLang();
+  const title = t(pageTitleForPath(location.pathname));
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

@@ -5,6 +5,7 @@ import { Receipt } from '@/components/Receipt';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PAPER_SIZES, getSavedPaperSize, isPaperSize, printElement, savePaperSize, type PaperSize } from '@/lib/print';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/stores/lang.store';
 
 // Paper size for this device, remembered between visits.
 export function usePaperSize(): [PaperSize, (size: PaperSize) => void] {
@@ -25,16 +26,17 @@ export function PaperSizeSelect({
   onChange: (size: PaperSize) => void;
   className?: string;
 }) {
+  const { t } = useLang();
   return (
     <Select value={value} onValueChange={(v) => isPaperSize(v) && onChange(v)}>
-      <SelectTrigger className={cn('w-[150px]', className)} aria-label="Paper size">
+      <SelectTrigger className={cn('w-[150px]', className)} aria-label={t('shell.paperSize')}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {PAPER_SIZES.map((p) => (
           <SelectItem key={p.value} value={p.value}>
             <span className="font-medium">{p.label}</span>
-            <span className="ml-2 text-xs text-muted-foreground">{p.hint}</span>
+            <span className="ms-2 text-xs text-muted-foreground">{t(p.hint)}</span>
           </SelectItem>
         ))}
       </SelectContent>

@@ -18,6 +18,8 @@ import { tablesApi } from '@/api/tables';
 import { useSocketEvent } from '@/lib/socket';
 import { useAuthStore } from '@/stores/auth.store';
 import { useRestaurant } from '@/hooks/useRestaurant';
+import { useLang } from '@/stores/lang.store';
+import type { TKey } from '@/i18n';
 import { formatMoney, timeAgo } from '@/lib/format';
 import { PageHeader } from '@/components/PageHeader';
 import { StatCard } from '@/components/StatCard';
@@ -29,24 +31,25 @@ import { ChartCard } from '@/components/charts/ChartCard';
 import { AreaTrendChart, BarSeriesChart, DonutChart, HorizontalBarChart } from '@/components/charts';
 import { CHART } from '@/components/charts/palette';
 
-const PERIODS: { value: Period; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'weekly', label: 'Week' },
-  { value: 'monthly', label: 'Month' },
-  { value: 'yearly', label: 'Year' },
+const PERIODS: { value: Period; label: TKey }[] = [
+  { value: 'today', label: 'common.today' },
+  { value: 'weekly', label: 'dashboard.periodWeek' },
+  { value: 'monthly', label: 'dashboard.periodMonth' },
+  { value: 'yearly', label: 'dashboard.periodYear' },
 ];
 
 const TABLE_STATUS = [
-  { key: 'AVAILABLE', label: 'Available', color: CHART.success },
-  { key: 'OCCUPIED', label: 'Occupied', color: CHART.primary },
-  { key: 'RESERVED', label: 'Reserved', color: CHART.warning },
-  { key: 'CLEANING', label: 'Cleaning', color: CHART.slate },
+  { key: 'AVAILABLE', color: CHART.success },
+  { key: 'OCCUPIED', color: CHART.primary },
+  { key: 'RESERVED', color: CHART.warning },
+  { key: 'CLEANING', color: CHART.slate },
 ];
 
 export function DashboardPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const { currency } = useRestaurant();
+  const { t, tEnum } = useLang();
   const [period, setPeriod] = useState<Period>('today');
   const money = (v: number) => formatMoney(v, currency);
 
@@ -81,28 +84,28 @@ export function DashboardPage() {
 
   const paymentData = sales.data
     ? [
-        { name: 'Cash', value: sales.data.cashPayments },
-        { name: 'Card', value: sales.data.cardPayments },
-        { name: 'Online / Bank', value: sales.data.onlinePayments },
+        { name: tEnum('paymentMethod', 'CASH'), value: sales.data.cashPayments },
+        { name: tEnum('paymentMethod', 'CARD'), value: sales.data.cardPayments },
+        { name: t('dashboard.onlineBank'), value: sales.data.onlinePayments },
       ].filter((d) => d.value > 0)
     : [];
 
-  const tableStatusData = TABLE_STATUS.map((t) => ({
-    name: t.label,
-    value: (tables.data ?? []).filter((tb) => tb.status === t.key).length,
+  const tableStatusData = TABLE_STATUS.map((ts) => ({
+    name: tEnum('tableStatus', ts.key),
+    value: (tables.data ?? []).filter((tb) => tb.status === ts.key).length,
   })).filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
-        description={`Welcome back, ${user?.fullName?.split(' ')[0] ?? ''} — here's today's overview.`}
+        title={t('shell.navDashboard')}
+        description={t('dashboard.welcome', { name: user?.fullName?.split(' ')[0] ?? '' })}
         actions={
           <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
             <TabsList>
               {PERIODS.map((p) => (
                 <TabsTrigger key={p.value} value={p.value}>
-                  {p.label}
+                  {t(p.label)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -116,14 +119,14 @@ export function DashboardPage() {
           Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard index={0} label="Today's Sales" value={money(s?.todaySales ?? 0)} icon={DollarSign} tone="success" />
-            <StatCard index={1} label="Orders Today" value={s?.totalOrdersToday ?? 0} icon={ClipboardList} tone="info" />
-            <StatCard index={2} label="Completed Today" value={s?.completedOrdersToday ?? 0} icon={CheckCircle2} tone="success" />
-            <StatCard index={3} label="Pending Orders" value={s?.pendingOrders ?? 0} icon={Clock} tone="warning" />
-            <StatCard index={4} label="Avg Order Value" value={money(todaySales.data?.averageOrderValue ?? 0)} icon={TrendingUp} tone="primary" />
-            <StatCard index={5} label="Occupied Tables" value={s?.occupiedTables ?? 0} icon={LayoutGrid} tone="info" />
-            <StatCard index={6} label="Low Stock Items" value={s?.lowStockItems ?? 0} icon={AlertTriangle} tone={s && s.lowStockItems > 0 ? 'destructive' : 'neutral'} />
-            <StatCard index={7} label="Active Staff" value={s?.activeStaff ?? 0} icon={Users} tone="neutral" />
+            <StatCard index={0} label={t('dashboard.todaySales')} value={money(s?.todaySales ?? 0)} icon={DollarSign} tone="success" />
+            <StatCard index={1} label={t('dashboard.ordersToday')} value={s?.totalOrdersToday ?? 0} icon={ClipboardList} tone="info" />
+            <StatCard index={2} label={t('dashboard.completedToday')} value={s?.completedOrdersToday ?? 0} icon={CheckCircle2} tone="success" />
+            <StatCard index={3} label={t('dashboard.pendingOrders')} value={s?.pendingOrders ?? 0} icon={Clock} tone="warning" />
+            <StatCard index={4} label={t('dashboard.avgOrderValue')} value={money(todaySales.data?.averageOrderValue ?? 0)} icon={TrendingUp} tone="primary" />
+            <StatCard index={5} label={t('dashboard.occupiedTables')} value={s?.occupiedTables ?? 0} icon={LayoutGrid} tone="info" />
+            <StatCard index={6} label={t('dashboard.lowStockItems')} value={s?.lowStockItems ?? 0} icon={AlertTriangle} tone={s && s.lowStockItems > 0 ? 'destructive' : 'neutral'} />
+            <StatCard index={7} label={t('dashboard.activeStaff')} value={s?.activeStaff ?? 0} icon={Users} tone="neutral" />
           </>
         )}
       </div>
@@ -131,8 +134,15 @@ export function DashboardPage() {
       {/* Sales + payments */}
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard
-          title="Sales Overview"
-          subtitle={series.data ? `${money(series.data.totalRevenue)} · ${series.data.totalOrders} orders` : undefined}
+          title={t('dashboard.salesOverview')}
+          subtitle={
+            series.data
+              ? t('dashboard.revenueOrders', {
+                  revenue: money(series.data.totalRevenue),
+                  n: series.data.totalOrders,
+                })
+              : undefined
+          }
           className="lg:col-span-2"
           index={0}
         >
@@ -143,18 +153,18 @@ export function DashboardPage() {
           )}
         </ChartCard>
 
-        <ChartCard title="Revenue by Payment" subtitle="By payment method" index={1}>
+        <ChartCard title={t('dashboard.revenueByPayment')} subtitle={t('dashboard.byPaymentMethod')} index={1}>
           {sales.isLoading ? <Skeleton className="h-[240px] w-full" /> : <DonutChart data={paymentData} moneyFormatter={money} />}
         </ChartCard>
       </div>
 
       {/* Orders + best selling + tables */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Orders" subtitle="Order count over time" index={0}>
+        <ChartCard title={t('common.orders')} subtitle={t('dashboard.orderCountOverTime')} index={0}>
           {series.isLoading ? <Skeleton className="h-[260px] w-full" /> : <BarSeriesChart data={series.data?.points ?? []} />}
         </ChartCard>
 
-        <ChartCard title="Best Selling Items" subtitle="By quantity sold" index={1}>
+        <ChartCard title={t('dashboard.bestSelling')} subtitle={t('dashboard.byQuantitySold')} index={1}>
           {bestSelling.isLoading ? (
             <Skeleton className="h-[280px] w-full" />
           ) : (
@@ -164,18 +174,23 @@ export function DashboardPage() {
           )}
         </ChartCard>
 
-        <ChartCard title="Table Status" subtitle="Current floor" index={2}>
+        <ChartCard title={t('dashboard.tableStatus')} subtitle={t('dashboard.currentFloor')} index={2}>
           {tables.isLoading ? (
             <Skeleton className="h-[240px] w-full" />
           ) : (
-            <DonutChart data={tableStatusData} colors={TABLE_STATUS.map((t) => t.color)} />
+            <DonutChart data={tableStatusData} colors={TABLE_STATUS.map((ts) => ts.color)} />
           )}
         </ChartCard>
       </div>
 
       {/* Activity + inventory */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Recent Activity" subtitle="Live operations feed" className="lg:col-span-2" index={0}>
+        <ChartCard
+          title={t('shell.recentActivity')}
+          subtitle={t('dashboard.liveFeed')}
+          className="lg:col-span-2"
+          index={0}
+        >
           {activities.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -183,16 +198,21 @@ export function DashboardPage() {
               ))}
             </div>
           ) : activities.data?.length === 0 ? (
-            <EmptyState icon={ActivityIcon} title="No activity yet" description="Operations will appear here as they happen." className="py-10" />
+            <EmptyState
+              icon={ActivityIcon}
+              title={t('dashboard.noActivity')}
+              description={t('dashboard.noActivityDesc')}
+              className="py-10"
+            />
           ) : (
-            <div className="max-h-[360px] space-y-1 overflow-y-auto scrollbar-thin pr-1">
+            <div className="max-h-[360px] space-y-1 overflow-y-auto scrollbar-thin pe-1">
               {activities.data?.map((a) => (
                 <div key={a.id} className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-accent">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-foreground">{a.description}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {a.module} · {timeAgo(a.createdAt)}
+                      {tEnum('module', a.module)} · {timeAgo(a.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -201,7 +221,7 @@ export function DashboardPage() {
           )}
         </ChartCard>
 
-        <ChartCard title="Inventory Alerts" subtitle="Low & out of stock" index={1}>
+        <ChartCard title={t('dashboard.inventoryAlerts')} subtitle={t('dashboard.lowOutOfStock')} index={1}>
           {inventory.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -209,7 +229,12 @@ export function DashboardPage() {
               ))}
             </div>
           ) : inventory.data?.lowStockItems.length === 0 ? (
-            <EmptyState icon={Package} title="Stock looks healthy" description="No low-stock items." className="py-10" />
+            <EmptyState
+              icon={Package}
+              title={t('dashboard.stockHealthy')}
+              description={t('dashboard.noLowStock')}
+              className="py-10"
+            />
           ) : (
             <div className="space-y-2">
               {inventory.data?.lowStockItems.slice(0, 6).map((item) => {
@@ -222,7 +247,7 @@ export function DashboardPage() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-foreground">{item.name}</span>
                       <span className={out ? 'text-destructive' : 'text-warning-foreground'}>
-                        {cur} / {limit} {item.unit}
+                        {cur} / {limit} {tEnum('unit', item.unit)}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">

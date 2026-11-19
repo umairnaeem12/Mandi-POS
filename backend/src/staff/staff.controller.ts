@@ -27,12 +27,8 @@ export class StaffController {
   }
 
   @Patch(':id')
-  update(
-    @CurrentUser('restaurantId') restaurantId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateStaffDto,
-  ) {
-    return this.staff.update(restaurantId, id, dto);
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateStaffDto) {
+    return this.staff.update(user.restaurantId, id, dto, user.id);
   }
 
   @Patch(':id/status')

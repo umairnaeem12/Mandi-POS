@@ -5,6 +5,7 @@ import { useRestaurant } from '@/hooks/useRestaurant';
 import { assetUrl } from '@/lib/assets';
 import { NAV_GROUPS } from '@/lib/nav';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/stores/lang.store';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SidebarProps {
@@ -16,6 +17,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const { name, logoUrl } = useRestaurant();
+  const { t, dir } = useLang();
 
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
@@ -36,12 +38,13 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
         {!collapsed && (
           <div className="min-w-0">
             <div className="truncate text-sm font-bold leading-tight">{name}</div>
-            <div className="text-[11px] text-sidebar-muted">Point of Sale</div>
+            <div className="text-[11px] text-sidebar-muted">{t('shell.pointOfSale')}</div>
           </div>
         )}
         <button
           onClick={onCloseMobile}
-          className="ml-auto rounded-md p-1.5 text-sidebar-muted hover:bg-white/10 lg:hidden"
+          aria-label={t('common.close')}
+          className="ms-auto rounded-md p-1.5 text-sidebar-muted hover:bg-white/10 lg:hidden"
         >
           <X className="h-5 w-5" />
         </button>
@@ -54,7 +57,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
             <div key={group.heading}>
               {!collapsed && (
                 <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">
-                  {group.heading}
+                  {t(group.heading)}
                 </div>
               )}
               <div className="space-y-0.5">
@@ -75,13 +78,13 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
                       }
                     >
                       <item.icon className="h-[18px] w-[18px] shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      {!collapsed && <span className="truncate">{t(item.label)}</span>}
                     </NavLink>
                   );
                   return collapsed ? (
                     <Tooltip key={item.to}>
                       <TooltipTrigger asChild>{link}</TooltipTrigger>
-                      <TooltipContent side="right">{item.label}</TooltipContent>
+                      <TooltipContent side={dir === 'rtl' ? 'left' : 'right'}>{t(item.label)}</TooltipContent>
                     </Tooltip>
                   ) : (
                     link
@@ -95,7 +98,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
 
       {!collapsed && (
         <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-muted">
-          v0.1.0 · Local network
+          {t('shell.version')}
         </div>
       )}
     </div>
@@ -124,8 +127,8 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
         />
         <div
           className={cn(
-            'absolute left-0 top-0 h-full w-64 transition-transform duration-200',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full',
+            'absolute start-0 top-0 h-full w-64 transition-transform duration-200',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full',
           )}
         >
           {content}

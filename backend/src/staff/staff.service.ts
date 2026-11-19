@@ -87,8 +87,12 @@ export class StaffService {
     });
   }
 
-  async update(restaurantId: string, id: string, dto: UpdateStaffDto) {
-    await this.findOne(restaurantId, id);
+  async update(restaurantId: string, id: string, dto: UpdateStaffDto, actorId: string) {
+    const existing = await this.findOne(restaurantId, id);
+    // Changing your own role could strip the permission needed to undo it.
+    if (id === actorId && dto.roleId && dto.roleId !== existing.roleId) {
+      throw new ForbiddenException('You cannot change your own role');
+    }
     if (dto.roleId) {
       await this.assertRoleExists(restaurantId, dto.roleId);
     }
@@ -119,11 +123,17 @@ export class StaffService {
     if (dto.roleId) {
       data.role = { connect: { id: dto.roleId } };
     }
-    if (dto.password) {
-      data.passwordHash = await argon2.hash(dto.password);
+    if (!dto.password) {
+      return this.prisma.user.update({ where: { id }, data, select: staffSelect });
     }
 
-    return this.prisma.user.update({ where: { id }, data, select: staffSelect });
+    // A reset password signs the user out everywhere, same as changing it themselves.
+    data.passwordHash = await argon2.hash(dto.password);
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id }, data, select: staffSelect }),
+      this.prisma.refreshToken.deleteMany({ where: { userId: id } }),
+    ]);
+    return user;
   }
 
   async setStatus(restaurantId: string, id: string, status: 'ACTIVE' | 'INACTIVE', actorId: string) {

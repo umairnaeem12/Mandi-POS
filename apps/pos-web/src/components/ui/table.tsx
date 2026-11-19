@@ -14,7 +14,7 @@ export const THead = forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HT
   ({ className, ...props }, ref) => (
     <thead
       ref={ref}
-      className={cn('border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground', className)}
+      className={cn('border-b bg-muted/40 text-start text-xs uppercase tracking-wide text-muted-foreground', className)}
       {...props}
     />
   ),

@@ -2,17 +2,19 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { LayoutGrid, ReceiptText } from 'lucide-react';
 import { OperationalTopbar } from '@/components/OperationalTopbar';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/stores/lang.store';
 
 const NAV = [
-  { to: '/waiter/tables', label: 'Tables', icon: LayoutGrid },
-  { to: '/waiter/orders', label: 'My Orders', icon: ReceiptText },
+  { to: '/waiter/tables', label: 'shell.navTables' as const, icon: LayoutGrid },
+  { to: '/waiter/orders', label: 'shell.navMyOrders' as const, icon: ReceiptText },
 ];
 
 export function WaiterLayout() {
+  const { t } = useLang();
   return (
     <div className="flex h-screen flex-col bg-background">
       <OperationalTopbar
-        title="Point of Sale"
+        title={t('shell.pointOfSale')}
         nav={NAV.map((n) => (
           <NavLink
             key={n.to}
@@ -27,7 +29,7 @@ export function WaiterLayout() {
             }
           >
             <n.icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{n.label}</span>
+            <span className="hidden sm:inline">{t(n.label)}</span>
           </NavLink>
         ))}
       />

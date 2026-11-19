@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { Plus, Trash2, UserCog } from 'lucide-react';
-import { staffApi, type CreateStaffInput } from '@/api/staff';
+import { Pencil, Plus, Trash2, UserCog } from 'lucide-react';
+import { staffApi, type CreateStaffInput, type UpdateStaffInput } from '@/api/staff';
 import { rolesApi } from '@/api/roles';
 import { useAuthStore } from '@/stores/auth.store';
+import { t as tr, useLang } from '@/stores/lang.store';
 import { initials } from '@/lib/format';
 import { toast } from '@/components/ui/sonner';
 import { PageHeader } from '@/components/PageHeader';
@@ -37,20 +38,32 @@ import {
 
 export function StaffPage() {
   const qc = useQueryClient();
+  const { t, tEnum } = useLang();
   const currentUser = useAuthStore((s) => s.user);
   const staffQuery = useQuery({ queryKey: ['staff'], queryFn: staffApi.list });
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: rolesApi.list });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['staff'] });
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Staff | null>(null);
   const [deleting, setDeleting] = useState<Staff | null>(null);
 
   const onError = (e: unknown) =>
-    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed');
+    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? tr('common.somethingWentWrong')) : tr('common.somethingWentWrong'));
 
   const createMut = useMutation({
     mutationFn: (input: CreateStaffInput) => staffApi.create(input),
-    onSuccess: () => { toast.success('Staff member added'); setFormOpen(false); invalidate(); },
+    onSuccess: () => { toast.success(tr('staff.added')); setFormOpen(false); invalidate(); },
+    onError,
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateStaffInput }) => staffApi.update(id, input),
+    onSuccess: (_, { input }) => {
+      toast.success(tr(input.password ? 'staff.passwordReset' : 'staff.updated'));
+      setFormOpen(false);
+      invalidate();
+    },
     onError,
   });
 
@@ -62,7 +75,7 @@ export function StaffPage() {
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => staffApi.remove(id),
-    onSuccess: () => { toast.success('Staff member removed'); setDeleting(null); invalidate(); },
+    onSuccess: () => { toast.success(tr('staff.removed')); setDeleting(null); invalidate(); },
     onError,
   });
 
@@ -71,24 +84,24 @@ export function StaffPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Staff"
-        description="Manage team members and their access."
-        actions={<Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" /> Add Staff</Button>}
+        title={t('staff.title')}
+        description={t('staff.subtitle')}
+        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> {t('staff.addStaff')}</Button>}
       />
 
       {staffQuery.isLoading ? (
         <TableSkeleton rows={5} cols={5} />
       ) : staff.length === 0 ? (
-        <EmptyState icon={UserCog} title="No staff yet" description="Add your team members to give them access." />
+        <EmptyState icon={UserCog} title={t('staff.emptyTitle')} description={t('staff.emptyDesc')} />
       ) : (
         <Table>
           <THead>
             <TR>
-              <TH>Name</TH>
-              <TH>Username</TH>
-              <TH>Role</TH>
-              <TH>Status</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>{t('common.name')}</TH>
+              <TH>{t('staff.username')}</TH>
+              <TH>{t('common.role')}</TH>
+              <TH>{t('common.status')}</TH>
+              <TH className="text-end">{t('common.actions')}</TH>
             </TR>
           </THead>
           <TBody>
@@ -101,13 +114,13 @@ export function StaffPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8"><AvatarFallback>{initials(s.fullName)}</AvatarFallback></Avatar>
                       <div>
-                        <div className="font-medium text-foreground">{s.fullName}{isSelf && <span className="ml-1 text-xs text-muted-foreground">(you)</span>}</div>
+                        <div className="font-medium text-foreground">{s.fullName}{isSelf && <span className="ms-1 text-xs text-muted-foreground">{t('staff.you')}</span>}</div>
                         <div className="text-xs text-muted-foreground">{s.email}</div>
                       </div>
                     </div>
                   </TD>
                   <TD className="text-muted-foreground">{s.username}</TD>
-                  <TD><Badge variant="default">{s.role.name}</Badge></TD>
+                  <TD><Badge variant="default">{tEnum('role', s.role.name)}</Badge></TD>
                   <TD>
                     <div className="flex items-center gap-2">
                       <Switch
@@ -115,15 +128,26 @@ export function StaffPage() {
                         disabled={isSelf || statusMut.isPending}
                         onCheckedChange={(v) => statusMut.mutate({ id: s.id, status: v ? 'ACTIVE' : 'INACTIVE' })}
                       />
-                      <Badge variant={active ? 'success' : 'secondary'}>{s.status}</Badge>
+                      <Badge variant={active ? 'success' : 'secondary'}>{tEnum('staffStatus', s.status)}</Badge>
                     </div>
                   </TD>
-                  <TD className="text-right">
+                  <TD className="text-end">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('staff.editStaff')}
+                      title={t('staff.editStaff')}
+                      onClick={() => { setEditing(s); setFormOpen(true); }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       className="text-destructive hover:text-destructive"
                       disabled={isSelf}
+                      aria-label={t('staff.deleteStaff')}
+                      title={t('staff.deleteStaff')}
                       onClick={() => setDeleting(s)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -138,18 +162,21 @@ export function StaffPage() {
 
       <StaffForm
         open={formOpen}
+        editing={editing}
+        isSelf={!!editing && editing.id === currentUser?.id}
         roles={rolesQuery.data ?? []}
-        pending={createMut.isPending}
+        pending={createMut.isPending || updateMut.isPending}
         onOpenChange={setFormOpen}
-        onSubmit={(v) => createMut.mutate(v)}
+        onCreate={(v) => createMut.mutate(v)}
+        onUpdate={(id, input) => updateMut.mutate({ id, input })}
       />
 
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${deleting?.fullName}?`}
-        description="This staff member will be removed and their sessions revoked."
-        confirmLabel="Delete"
+        title={t('staff.deleteTitle', { name: deleting?.fullName ?? '' })}
+        description={t('staff.deleteDesc')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleteMut.isPending}
         onConfirm={() => { if (deleting) deleteMut.mutate(deleting.id); }}
@@ -158,62 +185,123 @@ export function StaffPage() {
   );
 }
 
-function StaffForm({
-  open,
-  roles,
-  pending,
-  onOpenChange,
-  onSubmit,
-}: {
+interface StaffFormProps {
   open: boolean;
+  editing: Staff | null;
+  isSelf: boolean;
   roles: { id: string; name: string }[];
   pending: boolean;
   onOpenChange: (o: boolean) => void;
-  onSubmit: (v: CreateStaffInput) => void;
-}) {
-  const { register, handleSubmit, setValue, watch, reset } = useForm<CreateStaffInput>({
-    defaultValues: { fullName: '', email: '', username: '', password: '', roleId: '' },
-  });
+  onCreate: (v: CreateStaffInput) => void;
+  onUpdate: (id: string, v: UpdateStaffInput) => void;
+}
+
+const EMPTY_FORM: CreateStaffInput = { fullName: '', email: '', username: '', password: '', roleId: '' };
+
+function StaffForm({ open, editing, isSelf, roles, pending, onOpenChange, onCreate, onUpdate }: StaffFormProps) {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<CreateStaffInput>({ defaultValues: EMPTY_FORM });
   const roleId = watch('roleId');
+  const { t, tEnum } = useLang();
+
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      editing
+        ? { fullName: editing.fullName, email: editing.email, username: editing.username, password: '', roleId: editing.roleId }
+        : EMPTY_FORM,
+    );
+  }, [open, editing, reset]);
+
+  const submit = (v: CreateStaffInput) => {
+    if (!editing) return onCreate(v);
+    const { password, roleId: nextRole, ...rest } = v;
+    onUpdate(editing.id, {
+      ...rest,
+      // The backend rejects a role change on your own account, so don't send one.
+      ...(isSelf ? {} : { roleId: nextRole }),
+      ...(password ? { password } : {}),
+    });
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Staff Member</DialogTitle>
+          <DialogTitle>
+            {editing ? t('staff.editTitle', { name: editing.fullName }) : t('staff.addStaffMember')}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-4">
+        <form onSubmit={handleSubmit(submit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="fullName">Full name</Label>
+              <Label htmlFor="fullName">{t('staff.fullName')}</Label>
               <Input id="fullName" {...register('fullName', { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register('email', { required: true })} />
+              <Label htmlFor="email">{t('common.email')}</Label>
+              <Input id="email" type="email" dir="ltr" {...register('email', { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" {...register('username', { required: true })} />
+              <Label htmlFor="username">{t('staff.username')}</Label>
+              <Input
+                id="username"
+                dir="ltr"
+                aria-invalid={!!errors.username}
+                {...register('username', { required: true, minLength: 3 })}
+              />
+              {errors.username?.type === 'minLength' && (
+                <p className="text-xs text-destructive">{t('staff.usernameMin')}</p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...register('password', { required: true })} />
+              <Label htmlFor="password">{editing ? t('staff.newPassword') : t('common.password')}</Label>
+              <Input
+                id="password"
+                type="password"
+                dir="ltr"
+                autoComplete="new-password"
+                aria-invalid={!!errors.password}
+                aria-describedby={editing ? 'password-hint' : undefined}
+                {...register('password', { required: !editing, minLength: 6 })}
+              />
+              {errors.password?.type === 'minLength' ? (
+                <p className="text-xs text-destructive">{t('staff.passwordMin')}</p>
+              ) : (
+                editing && (
+                  <p id="password-hint" className="text-xs text-muted-foreground">
+                    {t('staff.newPasswordHint')}
+                  </p>
+                )
+              )}
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Role</Label>
-            <Select value={roleId} onValueChange={(v) => setValue('roleId', v, { shouldValidate: true })}>
-              <SelectTrigger><SelectValue placeholder="Select role…" /></SelectTrigger>
+            <Label>{t('common.role')}</Label>
+            <Select
+              value={roleId}
+              disabled={isSelf}
+              onValueChange={(v) => setValue('roleId', v, { shouldValidate: true })}
+            >
+              <SelectTrigger><SelectValue placeholder={t('staff.selectRole')} /></SelectTrigger>
               <SelectContent>
-                {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                {roles.map((r) => <SelectItem key={r.id} value={r.id}>{tEnum('role', r.name)}</SelectItem>)}
               </SelectContent>
             </Select>
             <input type="hidden" {...register('roleId', { required: true })} />
+            {isSelf && <p className="text-xs text-muted-foreground">{t('staff.ownRoleLocked')}</p>}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending || !roleId}>{pending ? 'Adding…' : 'Add staff'}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending || !roleId}>{editing
+                ? pending ? t('common.saving') : t('common.saveChanges')
+                : pending ? t('staff.adding') : t('staff.addStaff')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

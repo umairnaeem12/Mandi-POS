@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import { categoriesApi, type Category, type CategoryInput } from '@/api/categories';
+import { useLang } from '@/stores/lang.store';
 import { toast } from '@/components/ui/sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +26,7 @@ import {
 
 export function CategoriesPage() {
   const qc = useQueryClient();
+  const { t, dn } = useLang();
   const { data, isLoading } = useQuery({ queryKey: ['categories', 'all'], queryFn: () => categoriesApi.list(true) });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['categories'] });
 
@@ -33,12 +35,16 @@ export function CategoriesPage() {
   const [deleting, setDeleting] = useState<Category | null>(null);
 
   const onError = (e: unknown) =>
-    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed');
+    toast.error(
+      e instanceof AxiosError
+        ? ((e.response?.data as { message?: string })?.message ?? t('common.somethingWentWrong'))
+        : t('common.somethingWentWrong'),
+    );
 
   const saveMut = useMutation({
     mutationFn: (v: CategoryInput) => (editing ? categoriesApi.update(editing.id, v) : categoriesApi.create(v)),
     onSuccess: () => {
-      toast.success(editing ? 'Category updated' : 'Category added');
+      toast.success(editing ? t('categories.categoryUpdated') : t('categories.categoryAdded'));
       setFormOpen(false);
       setEditing(null);
       invalidate();
@@ -55,7 +61,7 @@ export function CategoriesPage() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => categoriesApi.remove(id),
     onSuccess: () => {
-      toast.success('Category deleted');
+      toast.success(t('categories.categoryDeleted'));
       setDeleting(null);
       invalidate();
     },
@@ -67,11 +73,11 @@ export function CategoriesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Categories"
-        description="Organize your menu into categories."
+        title={t('shell.navCategories')}
+        description={t('categories.subtitle')}
         actions={
           <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4" /> Add Category
+            <Plus className="h-4 w-4" /> {t('categories.addCategory')}
           </Button>
         }
       />
@@ -81,18 +87,18 @@ export function CategoriesPage() {
       ) : categories.length === 0 ? (
         <EmptyState
           icon={Tags}
-          title="No categories yet"
-          description="Create your first category to group menu items."
-          action={<Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" /> Add Category</Button>}
+          title={t('categories.emptyTitle')}
+          description={t('categories.emptyDesc')}
+          action={<Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" /> {t('categories.addCategory')}</Button>}
         />
       ) : (
         <Table>
           <THead>
             <TR>
-              <TH>Name</TH>
-              <TH>Items</TH>
-              <TH>Status</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>{t('common.name')}</TH>
+              <TH>{t('common.items')}</TH>
+              <TH>{t('common.status')}</TH>
+              <TH className="text-end">{t('common.actions')}</TH>
             </TR>
           </THead>
           <TBody>
@@ -100,7 +106,7 @@ export function CategoriesPage() {
               <TR key={c.id} className="hover:bg-accent/40">
                 <TD className="font-medium text-foreground">
                   {c.name}
-                  {c.nameAr && <span dir="rtl" className="ml-2 text-xs text-muted-foreground">{c.nameAr}</span>}
+                  {c.nameAr && <span dir="rtl" className="ms-2 text-xs text-muted-foreground">{c.nameAr}</span>}
                 </TD>
                 <TD className="text-muted-foreground">{c._count?.menuItems ?? 0}</TD>
                 <TD>
@@ -110,11 +116,11 @@ export function CategoriesPage() {
                       onCheckedChange={(v) => toggleMut.mutate({ id: c.id, isActive: v })}
                     />
                     <Badge variant={c.isActive ? 'success' : 'secondary'}>
-                      {c.isActive ? 'Active' : 'Inactive'}
+                      {c.isActive ? t('common.active') : t('common.inactive')}
                     </Badge>
                   </div>
                 </TD>
-                <TD className="text-right">
+                <TD className="text-end">
                   <div className="flex items-center justify-end gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => { setEditing(c); setFormOpen(true); }}>
                       <Pencil className="h-4 w-4" />
@@ -142,9 +148,9 @@ export function CategoriesPage() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${deleting?.name}?`}
-        description="This category will be removed. Items in it will need re-assigning."
-        confirmLabel="Delete"
+        title={t('categories.deleteTitle', { name: deleting ? dn(deleting.name, deleting.nameAr) : '' })}
+        description={t('categories.deleteDesc')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleteMut.isPending}
         onConfirm={() => { if (deleting) deleteMut.mutate(deleting.id); }}
@@ -166,6 +172,7 @@ function CategoryForm({
   onOpenChange: (o: boolean) => void;
   onSubmit: (v: CategoryInput) => void;
 }) {
+  const { t } = useLang();
   const { register, handleSubmit } = useForm<CategoryInput>({
     defaultValues: { name: editing?.name ?? '', nameAr: editing?.nameAr ?? '', description: editing?.description ?? '' },
   });
@@ -173,26 +180,26 @@ function CategoryForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Category' : 'Add Category'}</DialogTitle>
+          <DialogTitle>{editing ? t('categories.editCategory') : t('categories.addCategory')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="name">Name (English)</Label>
-              <Input id="name" placeholder="e.g. Grill" {...register('name', { required: true })} />
+              <Label htmlFor="name">{t('common.nameEn')}</Label>
+              <Input id="name" placeholder={t('categories.namePlaceholder')} {...register('name', { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nameAr">Name (Arabic)</Label>
+              <Label htmlFor="nameAr">{t('common.nameAr')}</Label>
               <Input id="nameAr" dir="rtl" placeholder="المشاوي" {...register('nameAr')} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">{t('categories.descriptionOptional')}</Label>
             <Input id="description" {...register('description')} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending}>{pending ? 'Saving…' : editing ? 'Save' : 'Add'}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t('common.saving') : editing ? t('common.save') : t('common.add')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

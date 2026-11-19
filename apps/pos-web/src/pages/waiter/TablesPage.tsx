@@ -6,6 +6,7 @@ import { Clock, LayoutGrid, Users } from 'lucide-react';
 import { tablesApi, type RestaurantTable, type TableStatus } from '@/api/tables';
 import { useSocketEvent } from '@/lib/socket';
 import { useRestaurant } from '@/hooks/useRestaurant';
+import { useLang } from '@/stores/lang.store';
 import { formatMoney, minutesSince } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { tablePhoto } from '@/lib/tablePhotos';
@@ -18,31 +19,27 @@ import { EmptyState } from '@/components/EmptyState';
 // card's photo banner, where a translucent tint would wash out.
 const STATUS: Record<
   TableStatus,
-  { label: string; card: string; dot: string; badge: string; onPhoto: string }
+  { card: string; dot: string; badge: string; onPhoto: string }
 > = {
   AVAILABLE: {
-    label: 'Available',
     card: 'border-success/30 hover:border-success/60',
     dot: 'bg-success',
     badge: 'bg-success/10 text-success',
     onPhoto: 'bg-success text-success-foreground',
   },
   OCCUPIED: {
-    label: 'Occupied',
     card: 'border-primary/40 hover:border-primary/70 bg-primary/[0.03]',
     dot: 'bg-primary',
     badge: 'bg-primary/10 text-primary',
     onPhoto: 'bg-primary text-primary-foreground',
   },
   RESERVED: {
-    label: 'Reserved',
     card: 'border-warning/40 hover:border-warning/70',
     dot: 'bg-warning',
     badge: 'bg-warning/15 text-warning-foreground',
     onPhoto: 'bg-warning text-warning-foreground',
   },
   CLEANING: {
-    label: 'Cleaning',
     card: 'border-border hover:border-slate-400',
     dot: 'bg-slate-400',
     badge: 'bg-muted text-muted-foreground',
@@ -56,6 +53,7 @@ export function TablesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { currency } = useRestaurant();
+  const { t, tEnum } = useLang();
   const [filter, setFilter] = useState<'ALL' | TableStatus>('ALL');
   const { data, isLoading } = useQuery({ queryKey: ['tables'], queryFn: tablesApi.list });
 
@@ -66,12 +64,12 @@ export function TablesPage() {
   useSocketEvent('order.cancelled', refresh);
 
   const tables = data ?? [];
-  const counts = (s: TableStatus) => tables.filter((t) => t.status === s).length;
-  const visible = filter === 'ALL' ? tables : tables.filter((t) => t.status === filter);
+  const counts = (s: TableStatus) => tables.filter((tb) => tb.status === s).length;
+  const visible = filter === 'ALL' ? tables : tables.filter((tb) => tb.status === filter);
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Tables" description="Select a table to start or view an order." />
+      <PageHeader title={t('shell.navTables')} description={t('pos.tablesDescription')} />
 
       {/* Filter chips */}
       <div className="flex flex-wrap gap-2">
@@ -88,7 +86,7 @@ export function TablesPage() {
               )}
             >
               {f !== 'ALL' && <span className={cn('h-2 w-2 rounded-full', STATUS[f].dot)} />}
-              {f === 'ALL' ? 'All' : STATUS[f].label}
+              {f === 'ALL' ? t('common.all') : tEnum('tableStatus', f)}
               <span className={cn('rounded-full px-1.5 text-xs', active ? 'bg-white/20' : 'bg-muted text-muted-foreground')}>
                 {count}
               </span>
@@ -100,16 +98,16 @@ export function TablesPage() {
       {isLoading ? (
         <CardGridSkeleton count={8} />
       ) : visible.length === 0 ? (
-        <EmptyState icon={LayoutGrid} title="No tables" description="No tables match this filter." />
+        <EmptyState icon={LayoutGrid} title={t('pos.noTables')} description={t('pos.noTablesMatch')} />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {visible.map((t, i) => (
+          {visible.map((tb, i) => (
             <TableCard
-              key={t.id}
-              table={t}
+              key={tb.id}
+              table={tb}
               index={i}
               currency={currency}
-              onClick={() => navigate(`/waiter/tables/${t.id}/order`)}
+              onClick={() => navigate(`/waiter/tables/${tb.id}/order`)}
             />
           ))}
         </div>
@@ -129,6 +127,7 @@ function TableCard({
   currency: string;
   onClick: () => void;
 }) {
+  const { t, tEnum } = useLang();
   const st = STATUS[table.status];
   const order = table.activeOrder;
   return (
@@ -139,7 +138,7 @@ function TableCard({
       whileHover={{ scale: 1.02 }}
       onClick={onClick}
       className={cn(
-        'flex flex-col overflow-hidden rounded-xl border-2 bg-card text-left shadow-card transition-shadow hover:shadow-card-hover',
+        'flex flex-col overflow-hidden rounded-xl border-2 bg-card text-start shadow-card transition-shadow hover:shadow-card-hover',
         st.card,
       )}
     >
@@ -156,12 +155,12 @@ function TableCard({
           <div className="min-w-0">
             <div className="truncate text-base font-bold text-white drop-shadow">{table.name}</div>
             <div className="flex items-center gap-1 text-xs text-white/90 drop-shadow">
-              <Users className="h-3 w-3" /> {table.capacity} seats
+              <Users className="h-3 w-3" /> {t('pos.seats', { n: table.capacity })}
             </div>
           </div>
           {/* Solid fill — the translucent card badge is unreadable over a photo. */}
           <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold', st.onPhoto)}>
-            {st.label}
+            {tEnum('tableStatus', table.status)}
           </span>
         </div>
       </div>
@@ -170,17 +169,17 @@ function TableCard({
         <div className="space-y-1 p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-medium text-foreground">{order.orderNumber}</span>
-            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{order.status}</Badge>
+            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{tEnum('orderStatus', order.status)}</Badge>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {minutesSince(order.createdAt)}m
+              <Clock className="h-3 w-3" /> {t('shell.minutesShort', { n: minutesSince(order.createdAt) })}
             </span>
             <span className="font-semibold text-primary">{formatMoney(order.grandTotal, currency)}</span>
           </div>
         </div>
       ) : (
-        <div className="p-3 text-xs text-muted-foreground">Tap to start an order</div>
+        <div className="p-3 text-xs text-muted-foreground">{t('pos.tapToStart')}</div>
       )}
     </motion.button>
   );

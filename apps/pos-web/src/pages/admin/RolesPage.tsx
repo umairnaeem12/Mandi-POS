@@ -17,11 +17,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Role } from '@/types';
+import type { TKey } from '@/i18n';
+import { t as tr, useLang } from '@/stores/lang.store';
 
-const prettify = (name: string) => name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+// Permission names stay as stored; unknown keys (added server-side later) show raw.
+function permLabel(t: (key: TKey) => string, name: string) {
+  const key = `roles.perm_${name}` as TKey;
+  const label = t(key);
+  return label === key ? name : label;
+}
 
 export function RolesPage() {
   const qc = useQueryClient();
+  const { t, tEnum } = useLang();
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: rolesApi.list });
   const permsQuery = useQuery({ queryKey: ['permissions'], queryFn: permissionsApi.list });
   const [editing, setEditing] = useState<Role | null>(null);
@@ -30,12 +38,12 @@ export function RolesPage() {
   const saveMut = useMutation({
     mutationFn: ({ id, permissions }: { id: string; permissions: string[] }) => rolesApi.setPermissions(id, permissions),
     onSuccess: () => {
-      toast.success('Permissions updated');
+      toast.success(tr('roles.updated'));
       qc.invalidateQueries({ queryKey: ['roles'] });
       setEditing(null);
     },
     onError: (e: unknown) =>
-      toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed'),
+      toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? tr('common.somethingWentWrong')) : tr('common.somethingWentWrong')),
   });
 
   const startEdit = (role: Role) => {
@@ -55,7 +63,7 @@ export function RolesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Roles & Permissions" description="Control what each role can access." />
+      <PageHeader title={t('roles.title')} description={t('roles.subtitle')} />
 
       {rolesQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -72,16 +80,16 @@ export function RolesPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 font-semibold text-foreground">
-                      {role.name}
-                      {role.isSystem && <Badge variant="secondary">System</Badge>}
+                      {tEnum('role', role.name)}
+                      {role.isSystem && <Badge variant="secondary">{t('roles.system')}</Badge>}
                     </div>
                     <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{role.permissions.length} permissions</span>
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {role._count?.users ?? 0} staff</span>
+                      <span>{t('roles.permissionCount', { n: role.permissions.length })}</span>
+                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {t('roles.staffCount', { n: role._count?.users ?? 0 })}</span>
                     </div>
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => startEdit(role)}>Edit</Button>
+                <Button variant="outline" onClick={() => startEdit(role)}>{t('common.edit')}</Button>
               </CardContent>
             </Card>
           ))}
@@ -91,16 +99,16 @@ export function RolesPage() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Permissions — {editing?.name}</DialogTitle>
+            <DialogTitle>{t('roles.dialogTitle', { name: tEnum('role', editing?.name) })}</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-between border-b pb-3">
-            <span className="text-sm text-muted-foreground">{selected.size} of {allPerms.length} selected</span>
+            <span className="text-sm text-muted-foreground">{t('roles.selectedOf', { selected: selected.size, total: allPerms.length })}</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelected(allSelected ? new Set() : new Set(allPerms.map((p) => p.name)))}
             >
-              {allSelected ? 'Clear all' : 'Select all'}
+              {allSelected ? t('roles.clearAll') : t('roles.selectAll')}
             </Button>
           </div>
           <div className="grid max-h-[55vh] grid-cols-1 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-2">
@@ -112,15 +120,15 @@ export function RolesPage() {
                   className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${on ? 'border-primary bg-primary/5' : 'hover:bg-accent'}`}
                 >
                   <input type="checkbox" className="h-4 w-4 rounded border-input text-primary focus:ring-ring" checked={on} onChange={() => toggle(perm.name)} />
-                  <span className="font-medium text-foreground">{prettify(perm.name)}</span>
+                  <span className="font-medium text-foreground">{permLabel(t, perm.name)}</span>
                 </label>
               );
             })}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
             <Button disabled={saveMut.isPending} onClick={() => editing && saveMut.mutate({ id: editing.id, permissions: [...selected] })}>
-              {saveMut.isPending ? 'Saving…' : 'Save permissions'}
+              {saveMut.isPending ? t('common.saving') : t('roles.savePermissions')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -98,6 +98,34 @@ describe('Restaurant POS (e2e)', () => {
       expect(res.status).toBe(401);
       await http.patch(`/api/staff/${waiterId}/status`).set(auth(adminToken)).send({ status: 'ACTIVE' });
     });
+
+    it('admin resets a staff password and the old sessions stop refreshing', async () => {
+      const { refreshToken } = (await login('testwaiter', 'pass123')).body.data;
+
+      const res = await http
+        .patch(`/api/staff/${waiterId}`)
+        .set(auth(adminToken))
+        .send({ fullName: 'Renamed Waiter', password: 'newpass456' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.fullName).toBe('Renamed Waiter');
+      expect(res.body.data.passwordHash).toBeUndefined();
+
+      expect((await login('testwaiter', 'pass123')).status).toBe(401);
+      expect((await login('testwaiter', 'newpass456')).body.data.accessToken).toBeDefined();
+      const refresh = await http.post('/api/auth/refresh').send({ refreshToken });
+      expect(refresh.status).toBe(401);
+    });
+
+    it('admin cannot change their own role (403)', async () => {
+      const me = (await http.get('/api/auth/me').set(auth(adminToken))).body.data;
+      const roles = (await http.get('/api/roles').set(auth(adminToken))).body.data;
+      const waiterRole = roles.find((r: { name: string }) => r.name === 'Waiter');
+      const res = await http
+        .patch(`/api/staff/${me.id}`)
+        .set(auth(adminToken))
+        .send({ roleId: waiterRole.id });
+      expect(res.status).toBe(403);
+    });
   });
 
   // ---- Invoice calculation ----

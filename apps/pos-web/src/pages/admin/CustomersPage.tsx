@@ -7,6 +7,7 @@ import { customersApi, type Customer, type CustomerInput } from '@/api/customers
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { formatDate, formatMoney } from '@/lib/format';
 import { orderStatusVariant } from '@/lib/status';
+import { useLang } from '@/stores/lang.store';
 import { toast } from '@/components/ui/sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -37,6 +38,7 @@ interface CustomerOrder {
 export function CustomersPage() {
   const qc = useQueryClient();
   const { currency } = useRestaurant();
+  const { t, tEnum } = useLang();
   const list = useQuery({ queryKey: ['customers'], queryFn: customersApi.list });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['customers'] });
 
@@ -52,17 +54,21 @@ export function CustomersPage() {
   });
 
   const onError = (e: unknown) =>
-    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed');
+    toast.error(
+      e instanceof AxiosError
+        ? ((e.response?.data as { message?: string })?.message ?? t('common.somethingWentWrong'))
+        : t('common.somethingWentWrong'),
+    );
 
   const createMut = useMutation({
     mutationFn: (input: CustomerInput) => customersApi.create(input),
-    onSuccess: () => { toast.success('Customer added'); setFormOpen(false); invalidate(); },
+    onSuccess: () => { toast.success(t('customers.customerAdded')); setFormOpen(false); invalidate(); },
     onError,
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => customersApi.remove(id),
-    onSuccess: () => { toast.success('Customer deleted'); setDeleting(null); invalidate(); },
+    onSuccess: () => { toast.success(t('customers.customerDeleted')); setDeleting(null); invalidate(); },
     onError,
   });
 
@@ -77,43 +83,43 @@ export function CustomersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Customers"
-        description="Customer directory and order history."
-        actions={<Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" /> Add Customer</Button>}
+        title={t('shell.navCustomers')}
+        description={t('customers.subtitle')}
+        actions={<Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" /> {t('customers.addCustomer')}</Button>}
       />
 
       <div className="relative sm:w-80">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or contact…" className="pl-9" />
+        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('customers.searchPlaceholder')} className="ps-9" />
       </div>
 
       {list.isLoading ? (
         <TableSkeleton rows={6} cols={5} />
       ) : customers.length === 0 ? (
-        <EmptyState icon={Users} title="No customers" description="Customers are created here or during billing." />
+        <EmptyState icon={Users} title={t('customers.emptyTitle')} description={t('customers.emptyDesc')} />
       ) : (
         <Table>
           <THead>
             <TR>
-              <TH>Name</TH>
-              <TH>Contact</TH>
-              <TH>Orders</TH>
-              <TH>Total Spent</TH>
-              <TH>Last Order</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>{t('common.name')}</TH>
+              <TH>{t('customers.contact')}</TH>
+              <TH>{t('common.orders')}</TH>
+              <TH>{t('customers.totalSpent')}</TH>
+              <TH>{t('customers.lastOrder')}</TH>
+              <TH className="text-end">{t('common.actions')}</TH>
             </TR>
           </THead>
           <TBody>
             {customers.map((c) => (
               <TR key={c.id} className="hover:bg-accent/40">
                 <TD className="font-medium text-foreground">{c.name}</TD>
-                <TD className="text-muted-foreground">{c.contactNumber ?? '—'}</TD>
+                <TD className="text-muted-foreground"><span dir="ltr">{c.contactNumber ?? '—'}</span></TD>
                 <TD className="text-muted-foreground">{c.totalOrders ?? 0}</TD>
                 <TD className="font-semibold">{money(c.totalSpent ?? 0)}</TD>
                 <TD className="text-muted-foreground">{c.lastOrderAt ? formatDate(c.lastOrderAt) : '—'}</TD>
-                <TD className="text-right">
+                <TD className="text-end">
                   <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon-sm" onClick={() => setHistoryFor(c)} title="Order history">
+                    <Button variant="ghost" size="icon-sm" onClick={() => setHistoryFor(c)} title={t('customers.orderHistory')}>
                       <History className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => setDeleting(c)}>
@@ -134,12 +140,12 @@ export function CustomersPage() {
       <Dialog open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{historyFor?.name} — Order History</DialogTitle>
+            <DialogTitle>{t('customers.historyTitle', { name: historyFor?.name ?? '' })}</DialogTitle>
           </DialogHeader>
           {history.isLoading ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded-md bg-muted" />)}</div>
           ) : (history.data?.length ?? 0) === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No orders yet.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t('customers.noOrders')}</p>
           ) : (
             <div className="max-h-[60vh] space-y-2 overflow-y-auto scrollbar-thin">
               {history.data?.map((o) => (
@@ -151,7 +157,7 @@ export function CustomersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={orderStatusVariant[o.status] ?? 'secondary'}>{o.status}</Badge>
+                    <Badge variant={orderStatusVariant[o.status] ?? 'secondary'}>{tEnum('orderStatus', o.status)}</Badge>
                     <span className="font-semibold">{money(o.grandTotal)}</span>
                   </div>
                 </div>
@@ -164,9 +170,9 @@ export function CustomersPage() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${deleting?.name}?`}
-        description="This customer will be removed from the directory."
-        confirmLabel="Delete"
+        title={t('customers.deleteTitle', { name: deleting?.name ?? '' })}
+        description={t('customers.deleteDesc')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleteMut.isPending}
         onConfirm={() => { if (deleting) deleteMut.mutate(deleting.id); }}
@@ -186,6 +192,7 @@ function CustomerForm({
   onOpenChange: (o: boolean) => void;
   onSubmit: (v: CustomerInput) => void;
 }) {
+  const { t } = useLang();
   const { register, handleSubmit, reset } = useForm<CustomerInput>({ defaultValues: { name: '', contactNumber: '', email: '' } });
   return (
     <Dialog
@@ -194,26 +201,26 @@ function CustomerForm({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Customer</DialogTitle>
+          <DialogTitle>{t('customers.addCustomer')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('common.name')}</Label>
             <Input id="name" {...register('name', { required: true })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="contact">Contact</Label>
-              <Input id="contact" {...register('contactNumber')} />
+              <Label htmlFor="contact">{t('customers.contact')}</Label>
+              <Input id="contact" dir="ltr" {...register('contactNumber')} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register('email')} />
+              <Label htmlFor="email">{t('common.email')}</Label>
+              <Input id="email" dir="ltr" type="email" {...register('email')} />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending}>{pending ? 'Adding…' : 'Add'}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t('customers.adding') : t('common.add')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

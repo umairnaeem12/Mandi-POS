@@ -6,6 +6,7 @@ import { useSocketEvent } from '@/lib/socket';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { paymentStatusVariant } from '@/lib/status';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/stores/lang.store';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -20,6 +21,7 @@ const STATUS_FILTERS: (PaymentStatus | 'ALL')[] = ['ALL', 'PAID', 'PARTIAL', 'UN
 
 export function InvoicesPage() {
   const qc = useQueryClient();
+  const { t, tEnum } = useLang();
   const [term, setTerm] = useState('');
   const [active, setActive] = useState('');
   const [status, setStatus] = useState<PaymentStatus | 'ALL'>('ALL');
@@ -55,7 +57,7 @@ export function InvoicesPage() {
   return (
     <div className="space-y-5">
       {printPortal}
-      <PageHeader title="Invoices" description="Search, view, and print receipts." />
+      <PageHeader title={t('shell.navInvoices')} description={t('invoices.description')} />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
@@ -68,7 +70,7 @@ export function InvoicesPage() {
                 status === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent',
               )}
             >
-              {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              {s === 'ALL' ? t('common.all') : tEnum('paymentStatus', s)}
             </button>
           ))}
         </div>
@@ -79,20 +81,20 @@ export function InvoicesPage() {
             setActive(term.trim());
           }}
         >
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={term}
             onChange={(e) => setTerm(e.target.value)}
-            placeholder="Search invoice # or customer…"
-            className="pl-9 pr-16"
+            placeholder={t('invoices.searchPlaceholder')}
+            className="ps-9 pe-16"
           />
           {active && (
             <button
               type="button"
               onClick={() => { setTerm(''); setActive(''); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+              className="absolute end-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
             >
-              Clear
+              {t('common.clear')}
             </button>
           )}
         </form>
@@ -101,20 +103,24 @@ export function InvoicesPage() {
       {isLoading ? (
         <TableSkeleton rows={6} cols={6} />
       ) : invoices.length === 0 ? (
-        <EmptyState icon={FileText} title="No invoices found" description="Generated invoices will appear here." />
+        <EmptyState
+          icon={FileText}
+          title={t('invoices.empty')}
+          description={t('invoices.emptyDesc')}
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border bg-card shadow-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-start text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Invoice</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Total</th>
-                <th className="px-4 py-3">Paid</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Method</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">{t('invoices.invoice')}</th>
+                <th className="px-4 py-3">{t('common.customer')}</th>
+                <th className="px-4 py-3">{t('common.total')}</th>
+                <th className="px-4 py-3">{t('common.paid')}</th>
+                <th className="px-4 py-3">{t('common.status')}</th>
+                <th className="px-4 py-3">{t('invoices.method')}</th>
+                <th className="px-4 py-3">{t('common.date')}</th>
+                <th className="px-4 py-3 text-end">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -129,16 +135,16 @@ export function InvoicesPage() {
                   <td className="px-4 py-3 font-semibold">{money(inv.grandTotal, inv.currencySymbol)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{money(inv.paidAmount, inv.currencySymbol)}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={paymentStatusVariant[inv.paymentStatus]}>{inv.paymentStatus}</Badge>
+                    <Badge variant={paymentStatusVariant[inv.paymentStatus]}>{tEnum('paymentStatus', inv.paymentStatus)}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{inv.payments[0]?.paymentMethod ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{tEnum('paymentMethod', inv.payments[0]?.paymentMethod) || '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(inv.createdAt)}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
-                      <Button variant="ghost" size="icon-sm" onClick={() => setSelected(inv)} title="View">
+                      <Button variant="ghost" size="icon-sm" onClick={() => setSelected(inv)} title={t('common.view')}>
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => printReceipt(inv)} title={`Print (${paper})`}>
+                      <Button variant="ghost" size="icon-sm" onClick={() => printReceipt(inv)} title={t('invoices.printPaper', { paper })}>
                         <Printer className="h-4 w-4" />
                       </Button>
                     </div>
@@ -156,10 +162,10 @@ export function InvoicesPage() {
             {selected && <Receipt invoice={selected} paper={paper} />}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 border-t p-3">
-            <PaperSizeSelect value={paper} onChange={setPaper} className="mr-auto" />
-            <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+            <PaperSizeSelect value={paper} onChange={setPaper} className="me-auto" />
+            <Button variant="outline" onClick={() => setSelected(null)}>{t('common.close')}</Button>
             <Button onClick={() => selected && printReceipt(selected)}>
-              <Printer className="h-4 w-4" /> Print
+              <Printer className="h-4 w-4" /> {t('common.print')}
             </Button>
           </div>
         </DialogContent>

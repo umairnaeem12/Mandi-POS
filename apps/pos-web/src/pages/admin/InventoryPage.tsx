@@ -11,6 +11,8 @@ import {
   type InventoryUnit,
 } from '@/api/inventory';
 import { formatDateTime } from '@/lib/format';
+import { useLang } from '@/stores/lang.store';
+import type { TKey } from '@/i18n';
 import { toast } from '@/components/ui/sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -40,6 +42,7 @@ type MoveKind = 'IN' | 'OUT' | 'ADJUST';
 
 export function InventoryPage() {
   const qc = useQueryClient();
+  const { t, tEnum } = useLang();
   const itemsQuery = useQuery({ queryKey: ['inventory'], queryFn: inventoryApi.list });
   const txQuery = useQuery({ queryKey: ['inventory-tx'], queryFn: () => inventoryApi.transactions(30) });
   const invalidate = () => {
@@ -52,11 +55,15 @@ export function InventoryPage() {
   const [deleting, setDeleting] = useState<InventoryItem | null>(null);
 
   const onError = (e: unknown) =>
-    toast.error(e instanceof AxiosError ? ((e.response?.data as { message?: string })?.message ?? 'Failed') : 'Failed');
+    toast.error(
+      e instanceof AxiosError
+        ? ((e.response?.data as { message?: string })?.message ?? t('common.somethingWentWrong'))
+        : t('common.somethingWentWrong'),
+    );
 
   const createMut = useMutation({
     mutationFn: (input: CreateItemInput) => inventoryApi.create(input),
-    onSuccess: () => { toast.success('Item added'); setAddOpen(false); invalidate(); },
+    onSuccess: () => { toast.success(t('inventory.itemAdded')); setAddOpen(false); invalidate(); },
     onError,
   });
 
@@ -66,13 +73,13 @@ export function InventoryPage() {
       if (kind === 'OUT') return inventoryApi.stockOut(item.id, qty, 'STOCK_OUT', notes);
       return inventoryApi.adjustment(item.id, qty, notes);
     },
-    onSuccess: () => { toast.success('Stock updated'); setMove(null); invalidate(); },
+    onSuccess: () => { toast.success(t('inventory.stockUpdated')); setMove(null); invalidate(); },
     onError,
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => inventoryApi.remove(id),
-    onSuccess: () => { toast.success('Item deleted'); setDeleting(null); invalidate(); },
+    onSuccess: () => { toast.success(t('inventory.itemDeleted')); setDeleting(null); invalidate(); },
     onError,
   });
 
@@ -82,24 +89,24 @@ export function InventoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Inventory"
-        description="Track stock levels and movements."
-        actions={<Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> Add Item</Button>}
+        title={t('shell.navInventory')}
+        description={t('inventory.subtitle')}
+        actions={<Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> {t('inventory.addItem')}</Button>}
       />
 
       {itemsQuery.isLoading ? (
         <TableSkeleton rows={6} cols={5} />
       ) : items.length === 0 ? (
-        <EmptyState icon={Boxes} title="No inventory items" description="Add items to start tracking stock." />
+        <EmptyState icon={Boxes} title={t('inventory.emptyTitle')} description={t('inventory.emptyDesc')} />
       ) : (
         <Table>
           <THead>
             <TR>
-              <TH>Item</TH>
-              <TH>Unit</TH>
-              <TH>Stock</TH>
-              <TH>Low limit</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>{t('inventory.item')}</TH>
+              <TH>{t('inventory.unit')}</TH>
+              <TH>{t('inventory.stock')}</TH>
+              <TH>{t('inventory.lowLimit')}</TH>
+              <TH className="text-end">{t('common.actions')}</TH>
             </TR>
           </THead>
           <TBody>
@@ -108,21 +115,21 @@ export function InventoryPage() {
                 <TD>
                   <div className="flex items-center gap-2 font-medium text-foreground">
                     {item.name}
-                    {isLow(item) && <Badge variant="destructive">Low</Badge>}
+                    {isLow(item) && <Badge variant="destructive">{t('inventory.low')}</Badge>}
                   </div>
                 </TD>
-                <TD className="text-muted-foreground">{item.unit}</TD>
+                <TD className="text-muted-foreground">{tEnum('unit', item.unit)}</TD>
                 <TD className={isLow(item) ? 'font-semibold text-destructive' : 'font-semibold'}>{item.currentStock}</TD>
                 <TD className="text-muted-foreground">{item.lowStockLimit}</TD>
-                <TD className="text-right">
+                <TD className="text-end">
                   <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon-sm" title="Stock in" onClick={() => setMove({ item, kind: 'IN' })}>
+                    <Button variant="ghost" size="icon-sm" title={t('inventory.stockIn')} onClick={() => setMove({ item, kind: 'IN' })}>
                       <ArrowUpCircle className="h-4 w-4 text-success" />
                     </Button>
-                    <Button variant="ghost" size="icon-sm" title="Stock out" onClick={() => setMove({ item, kind: 'OUT' })}>
+                    <Button variant="ghost" size="icon-sm" title={t('inventory.stockOut')} onClick={() => setMove({ item, kind: 'OUT' })}>
                       <ArrowDownCircle className="h-4 w-4 text-warning-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon-sm" title="Adjust" onClick={() => setMove({ item, kind: 'ADJUST' })}>
+                    <Button variant="ghost" size="icon-sm" title={t('inventory.adjust')} onClick={() => setMove({ item, kind: 'ADJUST' })}>
                       <Settings2 className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => setDeleting(item)}>
@@ -138,25 +145,26 @@ export function InventoryPage() {
 
       {/* Recent movements */}
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Recent stock movements</h2>
+        <h2 className="text-lg font-semibold">{t('inventory.recentMovements')}</h2>
         {(txQuery.data?.length ?? 0) === 0 ? (
-          <EmptyState icon={Boxes} title="No movements yet" className="py-8" />
+          <EmptyState icon={Boxes} title={t('inventory.noMovements')} className="py-8" />
         ) : (
           <Table>
             <THead>
               <TR>
-                <TH>Item</TH><TH>Type</TH><TH>Qty</TH><TH>Change</TH><TH>Notes</TH><TH>When</TH>
+                <TH>{t('inventory.item')}</TH><TH>{t('common.type')}</TH><TH>{t('common.qty')}</TH><TH>{t('inventory.stockChange')}</TH><TH>{t('common.notes')}</TH><TH>{t('inventory.when')}</TH>
               </TR>
             </THead>
             <TBody>
-              {txQuery.data?.map((t) => (
-                <TR key={t.id}>
-                  <TD className="font-medium text-foreground">{t.inventoryItem.name}</TD>
-                  <TD><Badge variant="secondary">{t.type}</Badge></TD>
-                  <TD>{t.quantity}</TD>
-                  <TD className="text-muted-foreground">{t.previousStock} → {t.newStock}</TD>
-                  <TD className="text-muted-foreground">{t.notes ?? '—'}</TD>
-                  <TD className="text-xs text-muted-foreground">{formatDateTime(t.createdAt)}</TD>
+              {txQuery.data?.map((tx) => (
+                <TR key={tx.id}>
+                  <TD className="font-medium text-foreground">{tx.inventoryItem.name}</TD>
+                  <TD><Badge variant="secondary">{tEnum('stockTx', tx.type)}</Badge></TD>
+                  <TD>{tx.quantity}</TD>
+                  {/* the arrow points from old to new stock, so it flips with the reading direction */}
+                  <TD className="text-muted-foreground">{tx.previousStock} <span className="inline-block rtl:-scale-x-100">→</span> {tx.newStock}</TD>
+                  <TD className="text-muted-foreground">{tx.notes ?? '—'}</TD>
+                  <TD className="text-xs text-muted-foreground">{formatDateTime(tx.createdAt)}</TD>
                 </TR>
               ))}
             </TBody>
@@ -176,9 +184,9 @@ export function InventoryPage() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${deleting?.name}?`}
-        description="This inventory item and its tracking will be removed."
-        confirmLabel="Delete"
+        title={t('inventory.deleteTitle', { name: deleting?.name ?? '' })}
+        description={t('inventory.deleteDesc')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleteMut.isPending}
         onConfirm={() => { if (deleting) deleteMut.mutate(deleting.id); }}
@@ -198,6 +206,7 @@ function AddItemForm({
   onOpenChange: (o: boolean) => void;
   onSubmit: (v: CreateItemInput) => void;
 }) {
+  const { t, tEnum } = useLang();
   const { register, handleSubmit, watch, setValue, reset } = useForm<{
     name: string;
     unit: InventoryUnit;
@@ -210,7 +219,7 @@ function AddItemForm({
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Inventory Item</DialogTitle>
+          <DialogTitle>{t('inventory.addInventoryItem')}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit((v) =>
@@ -224,31 +233,31 @@ function AddItemForm({
           className="space-y-4"
         >
           <div className="space-y-1.5">
-            <Label htmlFor="name">Item name</Label>
+            <Label htmlFor="name">{t('inventory.itemName')}</Label>
             <Input id="name" {...register('name', { required: true })} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label>Unit</Label>
+              <Label>{t('inventory.unit')}</Label>
               <Select value={unit} onValueChange={(v) => setValue('unit', v as InventoryUnit)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {INVENTORY_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  {INVENTORY_UNITS.map((u) => <SelectItem key={u} value={u}>{tEnum('unit', u)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="stock">Opening</Label>
+              <Label htmlFor="stock">{t('inventory.opening')}</Label>
               <Input id="stock" type="number" step="0.001" {...register('currentStock', { valueAsNumber: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="low">Low limit</Label>
+              <Label htmlFor="low">{t('inventory.lowLimit')}</Label>
               <Input id="low" type="number" step="0.001" {...register('lowStockLimit', { valueAsNumber: true })} />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending}>{pending ? 'Adding…' : 'Add item'}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t('inventory.adding') : t('inventory.addItemCta')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -256,10 +265,10 @@ function AddItemForm({
   );
 }
 
-const MOVE_LABELS: Record<MoveKind, { title: string; label: string; cta: string }> = {
-  IN: { title: 'Stock In', label: 'Quantity to add', cta: 'Add stock' },
-  OUT: { title: 'Stock Out', label: 'Quantity to remove', cta: 'Remove stock' },
-  ADJUST: { title: 'Adjust Stock', label: 'New actual stock level', cta: 'Set stock' },
+const MOVE_LABELS: Record<MoveKind, { title: TKey; label: TKey; cta: TKey }> = {
+  IN: { title: 'inventory.moveInTitle', label: 'inventory.qtyToAdd', cta: 'inventory.addStock' },
+  OUT: { title: 'inventory.moveOutTitle', label: 'inventory.qtyToRemove', cta: 'inventory.removeStock' },
+  ADJUST: { title: 'inventory.moveAdjustTitle', label: 'inventory.newStockLevel', cta: 'inventory.setStock' },
 };
 
 function StockMoveDialog({
@@ -273,6 +282,7 @@ function StockMoveDialog({
   onClose: () => void;
   onSubmit: (qty: number, notes?: string) => void;
 }) {
+  const { t, tEnum } = useLang();
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
   const cfg = move ? MOVE_LABELS[move.kind] : null;
@@ -281,7 +291,7 @@ function StockMoveDialog({
     <Dialog open={!!move} onOpenChange={(o) => { if (!o) { onClose(); setQty(''); setNotes(''); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{cfg?.title} — {move?.item.name}</DialogTitle>
+          <DialogTitle>{cfg && move ? t(cfg.title, { name: move.item.name }) : null}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -295,19 +305,19 @@ function StockMoveDialog({
           className="space-y-4"
         >
           <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
-            Current stock: <span className="font-semibold text-foreground">{move?.item.currentStock} {move?.item.unit}</span>
+            {t('inventory.currentStock')} <span className="font-semibold text-foreground">{move?.item.currentStock} {tEnum('unit', move?.item.unit)}</span>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="qty">{cfg?.label}</Label>
-            <Input id="qty" type="number" step="0.001" autoFocus value={qty} onChange={(e) => setQty(e.target.value)} required />
+            <Label htmlFor="qty">{cfg ? t(cfg.label) : null}</Label>
+            <Input id="qty" dir="ltr" type="number" step="0.001" autoFocus value={qty} onChange={(e) => setQty(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{t('inventory.notesOptional')}</Label>
             <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending || !qty}>{pending ? 'Saving…' : cfg?.cta}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={pending || !qty}>{pending ? t('common.saving') : cfg ? t(cfg.cta) : null}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

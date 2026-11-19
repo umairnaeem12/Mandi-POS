@@ -1,12 +1,14 @@
 // Receipt paper sizes and the print routine shared by every page that prints.
 // Each counter has its own printer, so the choice is remembered per device.
 
+import type { TKey } from '@/i18n';
+
 export type PaperSize = '80mm' | '58mm' | 'A4';
 
-export const PAPER_SIZES: { value: PaperSize; label: string; hint: string }[] = [
-  { value: '80mm', label: '80 mm', hint: 'Thermal roll (standard)' },
-  { value: '58mm', label: '58 mm', hint: 'Thermal roll (narrow)' },
-  { value: 'A4', label: 'A4', hint: 'Office printer, full page' },
+export const PAPER_SIZES: { value: PaperSize; label: string; hint: TKey }[] = [
+  { value: '80mm', label: '80 mm', hint: 'shell.paperHint80' },
+  { value: '58mm', label: '58 mm', hint: 'shell.paperHint58' },
+  { value: 'A4', label: 'A4', hint: 'shell.paperHintA4' },
 ];
 
 const ROLL_WIDTH_MM: Record<Exclude<PaperSize, 'A4'>, number> = { '80mm': 80, '58mm': 58 };
